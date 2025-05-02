@@ -80,7 +80,37 @@ public partial class MudJsonTreeView : MudComponentBase
     /// <param name="node">The selected node and its path.</param>
     public Task HandleNodeSelected((JsonNode node, string path) nodeInfo)
     {
-        return OnNodeSelected.InvokeAsync(nodeInfo);
+        var fullPath = GenerateJsonPath(nodeInfo.node);
+        return OnNodeSelected.InvokeAsync((nodeInfo.node, fullPath));
+    }
+
+    /// <summary>
+    /// Generates a fully compliant JSON Path for the given node.
+    /// </summary>
+    /// <param name="node">The node for which to generate the JSON Path.</param>
+    /// <returns>The fully compliant JSON Path.</returns>
+    private string GenerateJsonPath(JsonNode node)
+    {
+        var path = new List<string>();
+        var currentNode = node;
+
+        while (currentNode != null)
+        {
+            if (currentNode.Parent is JsonArray parentArray)
+            {
+                var index = parentArray.IndexOf(currentNode);
+                path.Insert(0, $"[{index}]");
+            }
+            else if (currentNode.Parent is JsonObject parentObject)
+            {
+                var propertyName = parentObject.FirstOrDefault(kvp => kvp.Value == currentNode).Key;
+                path.Insert(0, $".{propertyName}");
+            }
+
+            currentNode = currentNode.Parent;
+        }
+
+        return string.Join(string.Empty, path).TrimStart('.');
     }
 
     /// <summary>

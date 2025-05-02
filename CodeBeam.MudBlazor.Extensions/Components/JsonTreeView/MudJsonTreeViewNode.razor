@@ -128,6 +128,30 @@ else if (Node is JsonNode)
 
     private string GetNodePath(string? key)
     {
-        return key ?? string.Empty;
+        var path = new List<string>();
+        var currentNode = Node;
+
+        if (key != null)
+        {
+            path.Add(key);
+        }
+
+        while (currentNode != null)
+        {
+            if (currentNode.Parent is JsonArray parentArray)
+            {
+                var index = parentArray.IndexOf(currentNode);
+                path.Insert(0, $"[{index}]");
+            }
+            else if (currentNode.Parent is JsonObject parentObject)
+            {
+                var propertyName = parentObject.FirstOrDefault(kvp => kvp.Value == currentNode).Key;
+                path.Insert(0, $".{propertyName}");
+            }
+
+            currentNode = currentNode.Parent;
+        }
+
+        return string.Join(string.Empty, path).TrimStart('.');
     }
 }
