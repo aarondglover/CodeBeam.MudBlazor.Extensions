@@ -20,17 +20,17 @@
                     @* Could be a date *@
                     if (DateTime.TryParse(str, out DateTime date))
                     {
-                        <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.DateRange" EndText="@date.ToString()"></MudTreeViewItem>
+                        <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.DateRange" EndText="@date.ToString()" OnClick="() => OnNodeSelected.InvokeAsync((child.Value, GetNodePath(child.Key)))"></MudTreeViewItem>
                     }
                     @* Could be a GUID *@
                     else if (Guid.TryParse(str, out Guid guid))
                     {
-                        <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.Key" EndText="@str.ToUpperInvariant()"></MudTreeViewItem>
+                        <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.Key" EndText="@str.ToUpperInvariant()" OnClick="() => OnNodeSelected.InvokeAsync((child.Value, GetNodePath(child.Key)))"></MudTreeViewItem>
                     }
                     @* Fall back to string *@
                     else
                     {
-                        <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.TextSnippet" EndText="@str"></MudTreeViewItem>
+                        <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.TextSnippet" EndText="@str" OnClick="() => OnNodeSelected.InvokeAsync((child.Value, GetNodePath(child.Key)))"></MudTreeViewItem>
                     }
                     break;
                 case JsonValueKind.Number:
@@ -45,21 +45,21 @@
                     {
                         endText = doubleVal.ToString();
                     }
-                    <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.Numbers" EndText="@endText"></MudTreeViewItem>
+                    <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.Numbers" EndText="@endText" OnClick="() => OnNodeSelected.InvokeAsync((child.Value, GetNodePath(child.Key)))"></MudTreeViewItem>
                     break;
                 case JsonValueKind.True:
-                    <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.CheckBox" EndText="true"></MudTreeViewItem>
+                    <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.CheckBox" EndText="true" OnClick="() => OnNodeSelected.InvokeAsync((child.Value, GetNodePath(child.Key)))"></MudTreeViewItem>
                     break;
                 case JsonValueKind.False:
-                    <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" EndText="false"></MudTreeViewItem>
+                    <MudTreeViewItem T="string" Text="@child.Key" Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" EndText="false" OnClick="() => OnNodeSelected.InvokeAsync((child.Value, GetNodePath(child.Key)))"></MudTreeViewItem>
                     break;
             }
         }
         else if (child.Value is JsonArray)
         {
-            <MudTreeViewItem T="string" IconColor="Color.Primary" Icon="@Icons.Material.Filled.Folder" Text="@child.Key" EndTextClass="mud-primary-text" EndText="(Array)">
+            <MudTreeViewItem T="string" IconColor="Color.Primary" Icon="@Icons.Material.Filled.Folder" Text="@child.Key" EndTextClass="mud-primary-text" EndText="(Array)" OnClick="() => OnNodeSelected.InvokeAsync((child.Value, GetNodePath(child.Key)))">
                 @* Iterate each array element *@
-                <MudJsonTreeViewNode Node="@child.Value" Sorted="@Sorted" />
+                <MudJsonTreeViewNode Node="@child.Value" Sorted="@Sorted" OnNodeSelected="OnNodeSelected" />
             </MudTreeViewItem>
         }
     }
@@ -71,8 +71,8 @@ else if (Node is JsonArray)
     foreach (var child in Node.AsArray())
     {
         count++;
-        <MudTreeViewItem T="string" IconColor="Color.Primary" Icon="@Icons.Material.Filled.Folder" EndTextClass="mud-primary-text" EndText="@($"(Item {count})")">
-            <MudJsonTreeViewNode Node="@child" Sorted="@Sorted" />
+        <MudTreeViewItem T="string" IconColor="Color.Primary" Icon="@Icons.Material.Filled.Folder" EndTextClass="mud-primary-text" EndText="@($"(Item {count})")" OnClick="() => OnNodeSelected.InvokeAsync((child, GetNodePath(count.ToString())))">
+            <MudJsonTreeViewNode Node="@child" Sorted="@Sorted" OnNodeSelected="OnNodeSelected" />
         </MudTreeViewItem>
     }
 }
@@ -86,17 +86,17 @@ else if (Node is JsonNode)
             @* Could be a date *@
             if (DateTime.TryParse(str, out DateTime date))
             {
-                <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.DateRange" EndText="@date.ToString()"></MudTreeViewItem>
+                <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.DateRange" EndText="@date.ToString()" OnClick="() => OnNodeSelected.InvokeAsync((Node, GetNodePath(null)))"></MudTreeViewItem>
             }
             @* Could be a GUID *@
             else if (Guid.TryParse(str, out Guid guid))
             {
-                <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.Key" EndText="@str.ToUpperInvariant()"></MudTreeViewItem>
+                <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.Key" EndText="@str.ToUpperInvariant()" OnClick="() => OnNodeSelected.InvokeAsync((Node, GetNodePath(null)))"></MudTreeViewItem>
             }
             @* Fall back to string *@
             else
             {
-                <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.TextSnippet" EndText="@str"></MudTreeViewItem>
+                <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.TextSnippet" EndText="@str" OnClick="() => OnNodeSelected.InvokeAsync((Node, GetNodePath(null)))"></MudTreeViewItem>
             }
             break;
         case JsonValueKind.Number:
@@ -111,13 +111,23 @@ else if (Node is JsonNode)
             {
                 endText = doubleVal.ToString();
             }
-            <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.Numbers" EndText="@endText"></MudTreeViewItem>
+            <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.Numbers" EndText="@endText" OnClick="() => OnNodeSelected.InvokeAsync((Node, GetNodePath(null)))"></MudTreeViewItem>
             break;
         case JsonValueKind.True:
-            <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.CheckBox" EndText="true"></MudTreeViewItem>
+            <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.CheckBox" EndText="true" OnClick="() => OnNodeSelected.InvokeAsync((Node, GetNodePath(null)))"></MudTreeViewItem>
             break;
         case JsonValueKind.False:
-            <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" EndText="false"></MudTreeViewItem>
+            <MudTreeViewItem T="string" Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" EndText="false" OnClick="() => OnNodeSelected.InvokeAsync((Node, GetNodePath(null)))"></MudTreeViewItem>
             break;
+    }
+}
+
+@code {
+    [Parameter]
+    public EventCallback<(JsonNode, string)> OnNodeSelected { get; set; }
+
+    private string GetNodePath(string? key)
+    {
+        return key ?? string.Empty;
     }
 }

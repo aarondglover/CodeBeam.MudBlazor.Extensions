@@ -70,6 +70,20 @@ public partial class MudJsonTreeView : MudComponentBase
     public EventCallback<JsonNode> OnJsonChanged { get; set; }
 
     /// <summary>
+    /// Occurs when a node is selected.
+    /// </summary>
+    public EventCallback<(JsonNode, string)> OnNodeSelected { get; set; }
+
+    /// <summary>
+    /// Handles the node selection event.
+    /// </summary>
+    /// <param name="node">The selected node and its path.</param>
+    public Task HandleNodeSelected((JsonNode node, string path) nodeInfo)
+    {
+        return OnNodeSelected.InvokeAsync(nodeInfo);
+    }
+
+    /// <summary>
     /// Gets or sets a value indicating whether the tree contents are compacted.
     /// </summary>
     [Parameter]

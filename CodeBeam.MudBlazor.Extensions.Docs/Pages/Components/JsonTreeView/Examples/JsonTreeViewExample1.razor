@@ -1,9 +1,10 @@
 ﻿@namespace MudExtensions.Docs.Examples
 @using MudBlazor.Utilities
+@using System.Text.Json.Nodes
 
 <MudGrid>
     <MudItem lg="6" sm="12" Class="d-flex align-center flex-wrap">
-        <MudJsonTreeView Json="@_json" Dense="@_dense" />
+        <MudJsonTreeView Json="@_json" Dense="@_dense" OnNodeSelected="HandleNodeSelected" />
     </MudItem>
     <MudItem lg="6" sm="12" Class="d-flex align-center flex-wrap">
         <MudGrid>
@@ -12,6 +13,12 @@
             </MudItem>
             <MudItem xs="12">
                 <MudTextField @bind-Value="@_json" Lines="20" Label="Json Data" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="@_selectedNode" Lines="10" Label="Selected Node" Variant="Variant.Outlined" Disabled="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="@_selectedNodePath" Lines="10" Label="Selected Node Path" Variant="Variant.Outlined" Disabled="true" />
             </MudItem>
         </MudGrid>
     </MudItem>
@@ -36,4 +43,13 @@
       'Active': true,
       'Type': 'Normal'
     }".Replace("'", "\"");
+
+    string? _selectedNode;
+    string? _selectedNodePath;
+
+    void HandleNodeSelected((JsonNode node, string path) nodeInfo)
+    {
+        _selectedNode = nodeInfo.node.ToJsonString();
+        _selectedNodePath = nodeInfo.path;
+    }
 }
