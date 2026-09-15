@@ -29,7 +29,7 @@
                                       Variant="@Variant"
                                       HasAdornmentStart="@(AdornmentStart != null)" HasAdornmentEnd="true"
                                       Value="@(Strict && !IsValueInList ? null : ReadText)" Underline="@Underline"
-                                      Disabled="@GetDisabledState()" ReadOnly="true" Error="@ErrorState.Value" ErrorId="@ErrorState.Value"
+                                      Disabled="@GetDisabledState()" ReadOnly="true" Error="@ErrorState.Value" ErrorId="@ErrorIdState.Value"
                                       Clearable="@(Clearable && !GetReadOnlyState())" OnClearButtonClick="(async (e) => await SelectClearButtonClickHandlerAsync(e))"
                                       @attributes="GetUserAttributesForHiddenInput()" OnBlur="@OnLostFocus" ShrinkLabel="@(AdornmentStart != null || ShrinkLabel)" Typo="@Typo"
                                       ShowVisualiser="true" DataVisualiserStyle="min-height: 1.1876em; padding-right: 0px;">
