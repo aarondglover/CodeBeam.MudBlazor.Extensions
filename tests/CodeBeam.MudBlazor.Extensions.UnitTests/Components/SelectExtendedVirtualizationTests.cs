@@ -40,7 +40,7 @@ namespace MudExtensions.UnitTests.Components
         }
 
         [Test]
-        public async Task VirtualizedItemCollection_ChangedSelectionReplacesShadowItems()
+        public void VirtualizedItemCollection_ChangedSelectionReplacesShadowItems()
         {
             var items = Enumerable.Range(1, 4_000).Select(value => (int?)value).ToList();
 
@@ -50,7 +50,10 @@ namespace MudExtensions.UnitTests.Components
                 .Add(x => x.MultiSelection, true)
                 .Add(x => x.SelectedValues, new int?[] { 17 }));
 
-            await cut.SetParametersAndRenderAsync(parameters => parameters
+            cut.Render(parameters => parameters
+                .Add(x => x.ItemCollection, items)
+                .Add(x => x.Virtualize, true)
+                .Add(x => x.MultiSelection, true)
                 .Add(x => x.SelectedValues, new int?[] { 3_999 }));
 
             cut.WaitForAssertion(() =>
