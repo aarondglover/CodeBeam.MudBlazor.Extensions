@@ -25,10 +25,10 @@ public class SelectSelectionDensityBenchmarks
     }
 
     [Benchmark]
-    public int RenderVirtualizedSelect()
+    public async Task<int> RenderVirtualizedSelect()
     {
-        using var context = BenchmarkBunitContext.Create();
-        using var cut = context.Render<SelectBenchmarkHost>(parameters => parameters
+        await using var context = BenchmarkBunitContext.Create();
+        var cut = context.Render<SelectBenchmarkHost>(parameters => parameters
             .Add(x => x.Items, _items)
             .Add(x => x.SelectedValues, _selectedValues)
             .Add(x => x.Virtualize, true));
