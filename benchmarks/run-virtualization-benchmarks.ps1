@@ -81,7 +81,7 @@ function Invoke-Variant([string]$name, [string]$sha) {
     $benchmarkArguments = [System.Collections.Generic.List[string]]::new()
     @(
         "run", "--project", $project, "--configuration", "Release", "--",
-        "--filter", "*Select*",
+        "--filter", "*",
         "--artifacts", $bdnArtifacts,
         "--exporters", "GitHub", "CSV", "JSON",
         "--allStats",
