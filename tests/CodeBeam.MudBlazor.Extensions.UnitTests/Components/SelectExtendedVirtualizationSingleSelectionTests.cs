@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Bunit;
-using MudExtensions.UnitTests.Extensions;
 
 namespace MudExtensions.UnitTests.Components
 {
@@ -18,7 +17,7 @@ namespace MudExtensions.UnitTests.Components
                 .Add(x => x.Value, 3_999));
 
             cut.WaitForAssertion(() =>
-                cut.Instance.GetState(x => x.Text).Should().Be("3999"));
+                cut.Find("input").Attributes["value"]?.Value.Should().Be("3999"));
 
             var shadowList = cut.Find("div[style='display: none']");
             shadowList.QuerySelectorAll("div.mud-list-item-extended").Count().Should().Be(1);
