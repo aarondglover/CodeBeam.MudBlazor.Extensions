@@ -6,33 +6,38 @@ namespace MudExtensions.Benchmarks;
 
 internal static class ScaleProbe
 {
-    public static int Run(string[] args)
+    public static async Task<int> RunAsync(string[] args)
     {
         var outputPath = GetOption(args, "--output");
         var variant = Environment.GetEnvironmentVariable("BENCHMARK_VARIANT") ?? "current";
 
-        WarmUp();
+        await WarmUpAsync();
 
-        var results = Scenarios().Select(scenario => Measure(variant, scenario)).ToArray();
+        var results = new List<ProbeResult>();
+        foreach (var scenario in Scenarios())
+        {
+            results.Add(await MeasureAsync(variant, scenario));
+        }
+
         WriteTable(results);
 
         if (!string.IsNullOrWhiteSpace(outputPath))
         {
             var fullPath = Path.GetFullPath(outputPath);
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-            File.WriteAllText(fullPath, ToCsv(results));
+            await File.WriteAllTextAsync(fullPath, ToCsv(results));
             Console.WriteLine($"\nWrote {fullPath}");
         }
 
         return 0;
     }
 
-    private static ProbeResult Measure(string variant, ProbeScenario scenario)
+    private static async Task<ProbeResult> MeasureAsync(string variant, ProbeScenario scenario)
     {
         var items = Enumerable.Range(1, scenario.ItemCount).Select(static value => (int?)value).ToList();
         var selectedValues = CreateSelectedValues(scenario.ItemCount, scenario.SelectedCount);
 
-        using var context = BenchmarkBunitContext.Create();
+        await using var context = BenchmarkBunitContext.Create();
 
         GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();
@@ -40,7 +45,7 @@ internal static class ScaleProbe
         var allocatedBefore = GC.GetTotalAllocatedBytes(precise: true);
 
         var stopwatch = Stopwatch.StartNew();
-        using var cut = context.Render<SelectBenchmarkHost>(parameters => parameters
+        var cut = context.Render<SelectBenchmarkHost>(parameters => parameters
             .Add(x => x.Items, items)
             .Add(x => x.SelectedValues, selectedValues)
             .Add(x => x.SelectCount, scenario.SelectCount)
@@ -108,11 +113,11 @@ internal static class ScaleProbe
         }
     }
 
-    private static void WarmUp()
+    private static async Task WarmUpAsync()
     {
         var items = Enumerable.Range(1, 10).Select(static value => (int?)value).ToList();
-        using var context = BenchmarkBunitContext.Create();
-        using var _ = context.Render<SelectBenchmarkHost>(parameters => parameters
+        await using var context = BenchmarkBunitContext.Create();
+        context.Render<SelectBenchmarkHost>(parameters => parameters
             .Add(x => x.Items, items)
             .Add(x => x.SelectedValues, new int?[] { 1, 10 })
             .Add(x => x.Virtualize, true));
