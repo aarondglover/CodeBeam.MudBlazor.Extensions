@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Bunit;
-using MudExtensions.UnitTests.Extensions;
 
 namespace MudExtensions.UnitTests.Components
 {
@@ -37,7 +36,7 @@ namespace MudExtensions.UnitTests.Components
                 .Add(x => x.SelectedValues, selectedValues));
 
             cut.WaitForAssertion(() =>
-                cut.Instance.GetState(x => x.Text).Should().Be("17, 3999"));
+                cut.Find("input").Attributes["value"]?.Value.Should().Be("17, 3999"));
         }
 
         [Test]
