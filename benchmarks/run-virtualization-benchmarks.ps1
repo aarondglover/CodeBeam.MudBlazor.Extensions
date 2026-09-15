@@ -3,7 +3,8 @@ param(
     [string]$BaselineRef = "d0ae5981e80c4a493b29ccff7a7cb80b22fce0d5",
     [string]$FixedRef = "635b8b08ccfe0eefecd8aec8d0f72ce7d3a6c8b0",
     [string]$ResultsDirectory,
-    [switch]$Quick
+    [switch]$Quick,
+    [switch]$ProbeOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,6 +79,10 @@ function Invoke-Variant([string]$name, [string]$sha) {
         "probe", "--output", $probeOutput
     )
 
+    if ($ProbeOnly) {
+        return
+    }
+
     $benchmarkArguments = [System.Collections.Generic.List[string]]::new()
     @(
         "run", "--project", $project, "--configuration", "Release", "--",
@@ -103,7 +108,8 @@ try {
         "Fixed ref: $FixedRef",
         "Fixed SHA: $fixedSha",
         "Started: $([DateTimeOffset]::Now.ToString('O'))",
-        "Quick: $Quick"
+        "Quick: $Quick",
+        "Probe only: $ProbeOnly"
     ) | Out-File -FilePath (Join-Path $ResultsDirectory "run-info.txt") -Encoding utf8
 
     Invoke-Variant "baseline" $baselineSha
