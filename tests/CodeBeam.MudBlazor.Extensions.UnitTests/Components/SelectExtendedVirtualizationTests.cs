@@ -54,9 +54,9 @@ namespace MudExtensions.UnitTests.Components
                 .Add(x => x.ItemCollection, items)
                 .Add(x => x.Virtualize, true)
                 .Add(x => x.MultiSelection, true)
+                .Add(x => x.SelectedValues, selectedValues)
                 .Add(x => x.Comparer, new TestValueComparer())
-                .Add(x => x.ToStringFunc, value => value?.Name)
-                .Add(x => x.SelectedValues, selectedValues));
+                .Add(x => x.ToStringFunc, value => value?.Name));
 
             var shadowList = cut.Find("div[style='display: none']");
             shadowList.QuerySelectorAll("div.mud-list-item-extended").Count().Should().Be(1);
