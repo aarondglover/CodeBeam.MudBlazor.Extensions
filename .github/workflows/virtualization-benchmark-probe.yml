@@ -1,0 +1,32 @@
+name: Virtualization benchmark probe
+
+on:
+  push:
+    branches:
+      - benchmarks/virtualized-list-selection-state
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run baseline and fixed probes
+        shell: pwsh
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
+
+      - name: Upload probe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: virtualization-benchmark-probe
+          path: benchmark-results
