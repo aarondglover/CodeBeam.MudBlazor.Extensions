@@ -3,7 +3,7 @@ using MudExtensions.Benchmarks;
 
 if (args.Length > 0 && string.Equals(args[0], "probe", StringComparison.OrdinalIgnoreCase))
 {
-    return ScaleProbe.Run(args[1..]);
+    return await ScaleProbe.RunAsync(args[1..]);
 }
 
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
