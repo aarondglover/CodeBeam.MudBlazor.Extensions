@@ -24,10 +24,10 @@ public class ListExtendedInitialRenderBenchmarks
     }
 
     [Benchmark]
-    public int RenderList()
+    public async Task<int> RenderList()
     {
-        using var context = BenchmarkBunitContext.Create();
-        using var cut = context.Render<MudListExtended<int?>>(parameters => parameters
+        await using var context = BenchmarkBunitContext.Create();
+        var cut = context.Render<MudListExtended<int?>>(parameters => parameters
             .Add(x => x.ItemCollection, _items)
             .Add(x => x.Virtualize, Virtualize)
             .Add(x => x.MultiSelection, true)
