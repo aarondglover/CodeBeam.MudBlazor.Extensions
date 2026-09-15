@@ -40,6 +40,30 @@ namespace MudExtensions.UnitTests.Components
         }
 
         [Test]
+        public async Task VirtualizedItemCollection_ChangedSelectionReplacesShadowItems()
+        {
+            var items = Enumerable.Range(1, 4_000).Select(value => (int?)value).ToList();
+
+            var cut = Context.Render<MudSelectExtended<int?>>(parameters => parameters
+                .Add(x => x.ItemCollection, items)
+                .Add(x => x.Virtualize, true)
+                .Add(x => x.MultiSelection, true)
+                .Add(x => x.SelectedValues, new int?[] { 17 }));
+
+            await cut.SetParametersAndRenderAsync(parameters => parameters
+                .Add(x => x.SelectedValues, new int?[] { 3_999 }));
+
+            cut.WaitForAssertion(() =>
+            {
+                cut.Find("input").Attributes["value"]?.Value.Should().Be("3999");
+                var shadowList = cut.Find("div[style='display: none']");
+                shadowList.QuerySelectorAll("div.mud-list-item-extended").Count().Should().Be(1);
+                shadowList.TextContent.Should().Contain("3999");
+                shadowList.TextContent.Should().NotContain("17");
+            });
+        }
+
+        [Test]
         public void VirtualizedItemCollection_ShadowListRespectsComparer()
         {
             var items = new List<TestValue?>
