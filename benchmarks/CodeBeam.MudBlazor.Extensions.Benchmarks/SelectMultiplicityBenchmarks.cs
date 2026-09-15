@@ -22,10 +22,10 @@ public class SelectMultiplicityBenchmarks
     }
 
     [Benchmark]
-    public int RenderVirtualizedSelects()
+    public async Task<int> RenderVirtualizedSelects()
     {
-        using var context = BenchmarkBunitContext.Create();
-        using var cut = context.Render<SelectBenchmarkHost>(parameters => parameters
+        await using var context = BenchmarkBunitContext.Create();
+        var cut = context.Render<SelectBenchmarkHost>(parameters => parameters
             .Add(x => x.Items, _items)
             .Add(x => x.SelectedValues, _selectedValues)
             .Add(x => x.SelectCount, SelectCount)
