@@ -10,8 +10,9 @@ The project deliberately lives outside the unit-test project. NUnit + bUnit test
 
 The benchmark matrix covers:
 
+- direct `MudListExtended` initial renders with 10, 100, 1,000 and 4,000 items, with virtualization both off and on;
 - initial `MudSelectExtended` render with 10, 100, 1,000 and 4,000 items;
-- `Virtualize=false` and `Virtualize=true` initial renders;
+- `Virtualize=false` and `Virtualize=true` select renders;
 - 1, 5 and 20 simultaneous virtualized selects with 4,000 items each;
 - 1, 2, 10, 30 and 100 selected values from a 4,000-item collection.
 
@@ -51,5 +52,7 @@ Results are written below `BenchmarkDotNet.Artifacts/virtualized-list-selection-
 ## Interpretation
 
 The key expected scaling characteristic is that a virtualized select should not instantiate an item component for every member of `ItemCollection` merely to retain selected-value presentation state. Large changes in allocated bytes, retained component count and GC pressure are therefore meaningful. Small absolute timing differences for 10- or 100-item collections should be treated cautiously.
+
+The direct-list cases are intentionally included as a control: the `MudListExtended` selection-state correction should preserve reasonable list-render scaling rather than trading the select improvement for a list regression.
 
 GitHub-hosted runners are useful for build validation and preliminary measurements, but final before/after numbers should preferably come from repeated runs on the same workstation because hosted-runner hardware and contention can vary.
