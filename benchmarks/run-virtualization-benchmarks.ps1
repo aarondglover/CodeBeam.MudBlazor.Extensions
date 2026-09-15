@@ -3,12 +3,18 @@ param(
     [string]$BaselineRef = "d0ae5981e80c4a493b29ccff7a7cb80b22fce0d5",
     [string]$FixedRef = "76b806ec54cdb43c9b5171bbbd10d4759014583f",
     [string]$ResultsDirectory,
+    [string]$BenchmarkFilter = "*",
     [switch]$Quick,
-    [switch]$ProbeOnly
+    [switch]$ProbeOnly,
+    [switch]$SkipProbe
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+if ($ProbeOnly -and $SkipProbe) {
+    throw "ProbeOnly and SkipProbe cannot be used together."
+}
 
 $repoRoot = (& git -C $PSScriptRoot rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0) {
@@ -74,10 +80,12 @@ function Invoke-Variant([string]$name, [string]$sha) {
     (& git -C $worktree show -s --format="%H%n%ad%n%s" --date=iso-strict HEAD) |
         Out-File -FilePath (Join-Path $variantResults "source.txt") -Encoding utf8
 
-    Invoke-Checked dotnet @(
-        "run", "--project", $project, "--configuration", "Release", "--",
-        "probe", "--output", $probeOutput
-    )
+    if (-not $SkipProbe) {
+        Invoke-Checked dotnet @(
+            "run", "--project", $project, "--configuration", "Release", "--",
+            "probe", "--output", $probeOutput
+        )
+    }
 
     if ($ProbeOnly) {
         return
@@ -86,7 +94,7 @@ function Invoke-Variant([string]$name, [string]$sha) {
     $benchmarkArguments = [System.Collections.Generic.List[string]]::new()
     @(
         "run", "--project", $project, "--configuration", "Release", "--",
-        "--filter", "*",
+        "--filter", $BenchmarkFilter,
         "--artifacts", $bdnArtifacts,
         "--exporters", "GitHub", "CSV", "JSON",
         "--allStats",
@@ -108,8 +116,10 @@ try {
         "Fixed ref: $FixedRef",
         "Fixed SHA: $fixedSha",
         "Started: $([DateTimeOffset]::Now.ToString('O'))",
+        "Benchmark filter: $BenchmarkFilter",
         "Quick: $Quick",
-        "Probe only: $ProbeOnly"
+        "Probe only: $ProbeOnly",
+        "Skip probe: $SkipProbe"
     ) | Out-File -FilePath (Join-Path $ResultsDirectory "run-info.txt") -Encoding utf8
 
     Invoke-Variant "baseline" $baselineSha
