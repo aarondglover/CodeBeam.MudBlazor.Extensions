@@ -50,20 +50,30 @@ namespace MudExtensions.UnitTests.Components
                 .Add(x => x.MultiSelection, true)
                 .Add(x => x.SelectedValues, new int?[] { 17 }));
 
+            cut.WaitForAssertion(() =>
+                cut.Find("input").Attributes["value"]?.Value.Should().Be("17"));
+
             cut.Render(parameters => parameters
                 .Add(x => x.ItemCollection, items)
                 .Add(x => x.Virtualize, true)
                 .Add(x => x.MultiSelection, true)
                 .Add(x => x.SelectedValues, new int?[] { 3_999 }));
 
+            // Assert each layer independently so failures identify whether parameters, hidden
+            // components or the input presenter stopped following the selection.
+            cut.WaitForAssertion(() =>
+                cut.Instance.SelectedValues.Should().BeEquivalentTo(new int?[] { 3_999 }));
+
             cut.WaitForAssertion(() =>
             {
-                cut.Find("input").Attributes["value"]?.Value.Should().Be("3999");
                 var shadowList = cut.Find("div[style='display: none']");
                 shadowList.QuerySelectorAll("div.mud-list-item-extended").Count().Should().Be(1);
                 shadowList.TextContent.Should().Contain("3999");
                 shadowList.TextContent.Should().NotContain("17");
             });
+
+            cut.WaitForAssertion(() =>
+                cut.Find("input").Attributes["value"]?.Value.Should().Be("3999"));
         }
 
         [Test]
