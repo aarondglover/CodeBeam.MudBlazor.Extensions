@@ -1,0 +1,32 @@
+name: Materialize PR3 candidate
+
+on:
+  push:
+    branches:
+      - architecture/select-value-state-bootstrap
+    paths:
+      - .github/workflows/materialize-pr3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and verify patch
+        shell: bash
+        run: |
+          cat .pr3-backup/patch.part* > /tmp/pr3.patch
+          echo "0c7cb163ade073cfd15270f8f11d3e5d8adfa0415c5c6ef315122edf0858d37d  /tmp/pr3.patch" | sha256sum --check
+
+      - name: Materialize clean candidate branch
+        shell: bash
+        run: |
+          git reset --hard e7020d49a824a371ab3f3450255f10d9cfad8783
+          git am /tmp/pr3.patch
+          git push --force origin HEAD:refs/heads/architecture/select-value-state
