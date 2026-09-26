@@ -1,0 +1,183 @@
+@@ -1072,12 +1076,37 @@ namespace MudExtensions
+         /// <returns></returns>
+         public async Task SelectOption(int index)
+         {
++            if (ItemCollection != null)
++            {
++                if (AddNullItem)
++                {
++                    if (index == 0)
++                    {
++                        await SelectOption(default(T));
++                        return;
++                    }
++
++                    index--;
++                }
++
++                if (index < 0 || index >= ItemCollection.Count)
++                {
++                    if (!MultiSelection)
++                        await CloseMenu();
++                    return;
++                }
++
++                await SelectOption(ItemCollection.ElementAt(index));
++                return;
++            }
++
+             if (index < 0 || index >= _items.Count)
+             {
+                 if (!MultiSelection)
+                     await CloseMenu();
+                 return;
+             }
++
+             await SelectOption(_items[index].Value);
+         }
+ 
+@@ -1136,24 +1165,11 @@ namespace MudExtensions
+         {
+             if (item == null)
+                 return false;
+-            bool? result = null;
+-            if (!_items.Select(x => x.Value).Contains(item.Value))
+-            {
++
++            if (!_items.Contains(item) && FindRegisteredItem(item.Value) == null)
+                 _items.Add(item);
+ 
+-                if (item.Value != null)
+-                {
+-                    _valueLookup[item.Value] = item;
+-                    if (item.Value.Equals(ReadValue) && !MultiSelection)
+-                        result = true;
+-                }
+-            }
+-            //UpdateSelectAllChecked();
+-            if (!result.HasValue)
+-            {
+-                result = item.Value?.Equals(ReadValue);
+-            }
+-            return result == true;
++            return ValuesEqual(item.Value, ReadValue);
+         }
+ 
+         /// <summary>
+@@ -1163,34 +1179,9 @@ namespace MudExtensions
+         protected internal void Remove(MudSelectItemExtended<T?>? item)
+         {
+             if (item == null)
+-            {
+-                return;
+-            }
+-            _items.Remove(item);
+-            if (item.Value != null)
+-                _valueLookup.Remove(item.Value);
+-        }
+-
+-        /// <summary>
+-        /// 
+-        /// </summary>
+-        /// <param name="item"></param>
+-        public void RegisterShadowItem(MudSelectItemExtended<T?>? item)
+-        {
+-            if (item == null || item.Value == null)
+                 return;
+-            _shadowLookup[item.Value] = item;
+-        }
+ 
+-        /// <summary>
+-        /// 
+-        /// </summary>
+-        /// <param name="item"></param>
+-        public void UnregisterShadowItem(MudSelectItemExtended<T?>? item)
+-        {
+-            if (item == null || item.Value == null)
+-                return;
+-            _shadowLookup.Remove(item.Value);
++            _items.Remove(item);
+         }
+ 
+         #endregion
+@@ -1248,15 +1239,11 @@ namespace MudExtensions
+             {
+                 if (Value == null)
+                     return false;
+-                //return _shadowLookup.TryGetValue(Value, out var _);
+-                foreach (var value in Items?.Select(x => x.Value) ?? new List<T?>())
+-                {
+-                    if (Comparer != null ? Comparer.Equals(value, Value) : value?.Equals(Value) == true) //(Converter.Set(item.Value) == Converter.Set(Value))
+-                    {
+-                        return true;
+-                    }
+-                }
+-                return false;
++
++                if (ItemCollection != null)
++                    return ItemCollection.Any(item => ValuesEqual(item, Value));
++
++                return Items?.Any(item => ValuesEqual(item.Value, Value)) == true;
+             }
+         }
+ 
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectItemExtended.razor.cs b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectItemExtended.razor.cs
+index a74395f..d8227d9 100644
+--- a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectItemExtended.razor.cs
++++ b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectItemExtended.razor.cs
+@@ -15,40 +15,25 @@ namespace MudExtensions
+             .Build();
+ 
+         private IMudSelectExtended? _parent;
+-        internal MudSelectExtended<T?>? MudSelectExtended => (MudSelectExtended<T?>?)IMudSelectExtended;
++        private MudSelectExtended<T?>? _registeredSelect;
++
++        internal MudSelectExtended<T?>? MudSelectExtended => (MudSelectExtended<T?>?)_parent;
++
+         /// <summary>
+         /// 
+         /// </summary>
+         public MudListItemExtended<T> ListItem { get; set; } = new();
+         internal string ItemId { get; } = Identifier.Create("selectItem_");
+ 
+-        private IMudShadowSelectExtended? _shadowParent;
+         /// <summary>
+-        /// The parent select component
++        /// The parent select component. Registration is reconciled in OnParametersSet so all
++        /// cascading parameters (including HideContent) have been applied before side effects run.
+         /// </summary>
+         [CascadingParameter]
+         internal IMudSelectExtended? IMudSelectExtended
+         {
+             get => _parent;
+-            set
+-            {
+-                _parent = value;
+-                if (_parent == null)
+-                    return;
+-                _parent.CheckGenericTypeMatch(this);
+-                if (MudSelectExtended == null)
+-                    return;
+-                bool isSelected = MudSelectExtended.Add(this);
+-                if (_parent.MultiSelection)
+-                {
+-                    MudSelectExtended.SelectionChangedFromOutside += OnUpdateSelectionStateFromOutside;
+-                    InvokeAsync(() => OnUpdateSelectionStateFromOutside(MudSelectExtended.SelectedValues));
+-                }
+-                else
+-                {
+-                    IsSelected = isSelected;
+-                }
+-            }
++            set => _parent = value;
+         }
+ 
+         /// <summary>
+@@ -72,16 +57,6 @@ namespace MudExtensions
+         [CascadingParameter(Name = "HideContent")]
+         internal bool HideContent { get; set; }
+ 
+-        private void OnUpdateSelectionStateFromOutside(IEnumerable<T?>? selection)
+-        {
+-            if (selection == null)
+-                return;
