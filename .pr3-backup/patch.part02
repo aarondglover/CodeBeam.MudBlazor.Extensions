@@ -1,0 +1,93 @@
+                                             }
+                                         }
+                                         else
+                                         {
+-                                            foreach (var item in Items?.Where(x => SelectedValues?.Contains(x.Value) == true) ?? new List<MudSelectItemExtended<T>>())
++                                            foreach (var item in Items?.Where(x => SelectedValues?.Contains(x.Value, _comparer) == true) ?? new List<MudSelectItemExtended<T>>())
+                                             {
+                                                 <MudChip Class="@ChipClass" Value="item.Value" Text="@(string.IsNullOrEmpty(item.Text) ? ConvertSet(item.Value) : item.Text)" Color="@Color" Size="@ChipSize" Variant="@ChipVariant" />
+                                             }
+@@ -90,25 +90,19 @@
+                                 }
+                                 else if (ValuePresenter == ValuePresenter.ItemContent)
+                                 {
+-                                    if (SelectedListItem == null)
++                                    var selectedPresentationItem = GetSelectedPresentationItem();
++
++                                    if (selectedPresentationItem == null)
+                                     {
+                                         <MudText Typo="@Typo" Class="mud-text-secondary mud-placeholder-extended">@Placeholder</MudText>
+-
+                                     }
+                                     else if (ItemTemplate != null)
+                                     {
+-                                        if (SelectedListItem != null && SelectedListItem.Value != null)
+-                                        {
+-                                            @ItemTemplate(SelectedListItem)
+-                                        }
+-                                        else if (!string.IsNullOrEmpty(Placeholder))
+-                                        {
+-                                            <MudText Typo="@Typo" Class="mud-text-secondary mud-placeholder-extended">@Placeholder</MudText>
+-                                        }
++                                        @ItemTemplate(selectedPresentationItem)
+                                     }
+-                                    else if (SelectedListItem.ChildContent != null)
++                                    else if (selectedPresentationItem.ChildContent != null)
+                                     {
+-                                        <MudRender>@SelectedListItem.ChildContent</MudRender>
++                                        <MudRender>@selectedPresentationItem.ChildContent</MudRender>
+                                     }
+                                     else
+                                     {
+@@ -159,26 +153,15 @@
+             </MudInputControl>
+         </div>
+ 
+-        @*The hidden list only materializes selected ItemCollection values. It keeps selected item components available for presenters without defeating virtualization.*@
+-
+-        <div style="display: none">
+-            <CascadingValue Value="@this" IsFixed="true">
+-                <MudListExtended @key="Virtualize ? SelectedValues : null" T="T" @bind-SelectedValue:set="@SetValueCoreAsync" @bind-SelectedValue:get="@ReadValue" @bind-SelectedValues="@SelectedValues" @bind-SelectedItem="@SelectedListItem" @bind-SelectedItems="@SelectedListItems"
+-                                 Clickable="true" Color="@Color" Dense="@Dense" ItemCollection="@GetShadowItemCollection()" Padding="@EnablePopoverPadding" EnableSelectedItemStyle="@EnableSelectedItemStyle"
+-                                 MultiSelection="@MultiSelection" MultiSelectionComponent="@MultiSelectionComponent" MultiSelectionAlign="@MultiSelectionAlign" SelectAll="@SelectAll" SelectAllPosition="@SelectAllPosition" SelectAllText="@SelectAllText"
+-                                 CheckedIcon="@CheckedIcon" UncheckedIcon="@UncheckedIcon" IndeterminateIcon="@IndeterminateIcon" SelectValueOnTab="@SelectValueOnTab" Comparer="@Comparer" AddNullItem="@AddNullItem" AddedNullItemText="@AddedNullItemText"
+-                                 ItemTemplate="@ItemTemplate" ItemSelectedTemplate="@ItemSelectedTemplate" ItemDisabledTemplate="@ItemDisabledTemplate" SearchBox="@SearchBox" SearchBoxAutoFocus="@SearchBoxAutoFocus" SearchFunc="@SearchFunc" SearchBoxPlaceholder="@SearchBoxPlaceholder"
+-                                 SearchBoxClearable="@SearchBoxClearable" SearchBoxVariant="@SearchBoxVariant" SearchBoxAdornment="SearchBoxAdornment" ToStringFunc="@ToStringFunc" OnSearchStringChange="@OnSearchStringChange">
+-                    @ChildContent
+-                </MudListExtended>
++        @* Declarative child items are registered once as metadata so selected text/content is
++           available while the popover is closed. Collection-backed selects are value-driven and
++           do not need a hidden item tree. *@
++        @if (ItemCollection == null && ChildContent != null)
++        {
++            <CascadingValue Name="HideContent" Value="true">
++                @ChildContent
+             </CascadingValue>
+-        </div>
+-    </CascadingValue>
+-
+-    <CascadingValue Value="@((IMudShadowSelectExtended)this)" IsFixed="true">
+-        <CascadingValue Name="HideContent" Value="true">
+-            @ChildContent
+-        </CascadingValue>
++        }
+     </CascadingValue>
+ </CascadingValue>
+ 
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor.cs b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor.cs
+index 838e571..4916c18 100644
+--- a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor.cs
++++ b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor.cs
+@@ -11,7 +11,7 @@ namespace MudExtensions
+     /// Select component with advanced features.
+     /// </summary>
+     /// <typeparam name="T"></typeparam>
+-    public partial class MudSelectExtended<T> : MudBaseInputExtended<T>, IMudSelectExtended, IMudShadowSelectExtended
++    public partial class MudSelectExtended<T> : MudBaseInputExtended<T>, IMudSelectExtended
+     {
+ 
+         #region Constructor, Injected Services, Parameters, Fields
+@@ -46,18 +46,12 @@ namespace MudExtensions
+         /// <summary>
+         /// 
+         /// </summary>
