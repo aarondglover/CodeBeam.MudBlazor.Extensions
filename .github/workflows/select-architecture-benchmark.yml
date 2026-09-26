@@ -1,0 +1,34 @@
+name: Select architecture benchmark
+
+on:
+  push:
+    branches:
+      - validation/select-architecture-benchmark
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch architecture candidate
+        run: git fetch origin architecture/select-value-state:refs/remotes/origin/architecture/select-value-state
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compare #648 with architecture candidate
+        shell: pwsh
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "e7020d49a824a371ab3f3450255f10d9cfad8783" -FixedRef "origin/architecture/select-value-state" -ResultsDirectory "$env:GITHUB_WORKSPACE/architecture-benchmark-results"
+
+      - name: Upload probe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: select-architecture-benchmark
+          path: architecture-benchmark-results
