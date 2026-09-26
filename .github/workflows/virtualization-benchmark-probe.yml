@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - benchmarks/virtualized-list-selection-state
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - 'benchmarks/**'
+      - '.github/workflows/virtualization-benchmark-probe.yml'
   workflow_dispatch:
 
 jobs:
@@ -22,7 +28,7 @@ jobs:
 
       - name: Run baseline and fixed probes
         shell: pwsh
-        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
 
       - name: Upload probe results
         if: always()
@@ -46,7 +52,7 @@ jobs:
 
       - name: Run focused BenchmarkDotNet comparison
         shell: pwsh
-        run: ./benchmarks/run-virtualization-benchmarks.ps1 -SkipProbe -Quick -BenchmarkFilter "*SelectInitialRenderBenchmarks*" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -SkipProbe -Quick -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -BenchmarkFilter "*SelectInitialRenderBenchmarks*" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
 
       - name: Upload BenchmarkDotNet results
         if: always()
