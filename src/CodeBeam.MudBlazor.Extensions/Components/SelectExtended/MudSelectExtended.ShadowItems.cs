@@ -6,15 +6,15 @@ namespace MudExtensions
     public partial class MudSelectExtended<T>
     {
         /// <summary>
-        /// Returns only selected values that are present in the current item collection.
-        /// The hidden list exists to materialize selected item components for presentation;
-        /// it must not materialize the entire collection when the visible list is virtualized.
+        /// Returns the values that must be materialized by the hidden list.
+        /// Non-virtualized selects preserve the existing full item registry behavior;
+        /// virtualized selects only materialize selected values that exist in the current item collection.
         /// </summary>
         protected ICollection<T?>? GetShadowItemCollection()
         {
-            if (ItemCollection == null)
+            if (ItemCollection == null || !Virtualize)
             {
-                return null;
+                return ItemCollection;
             }
 
             var selectedValues = SelectedValues?.ToHashSet(_comparer) ?? new HashSet<T?>(_comparer);

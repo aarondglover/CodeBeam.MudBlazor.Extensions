@@ -24,5 +24,20 @@ namespace MudExtensions.UnitTests.Components
             var shadowList = cut.Find("div[style='display: none']");
             shadowList.QuerySelectorAll("div.mud-list-item-extended").Count().Should().Be(2);
         }
+
+        [Test]
+        public void NonVirtualizedItemCollection_PreservesFullRegisteredItemSet()
+        {
+            var items = Enumerable.Range(1, 100).Select(value => (int?)value).ToList();
+            var selectedValues = new int?[] { 1, 100 };
+
+            var cut = Context.Render<MudSelectExtended<int?>>(parameters => parameters
+                .Add(x => x.ItemCollection, items)
+                .Add(x => x.Virtualize, false)
+                .Add(x => x.MultiSelection, true)
+                .Add(x => x.SelectedValues, selectedValues));
+
+            cut.Instance.Items.Should().HaveCount(items.Count);
+        }
     }
 }
