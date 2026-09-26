@@ -49,6 +49,76 @@ For a faster smoke run:
 
 Results are written below `BenchmarkDotNet.Artifacts/virtualized-list-selection-state/<timestamp>/` unless `-ResultsDirectory` is supplied.
 
+## Choosing what to run
+
+The benchmark harness is intentionally opt-in. It should complement, not replace, the normal correctness suite.
+
+Recommended policy:
+
+| Context | Recommended command | Purpose |
+| --- | --- | --- |
+| Every PR/build | normal unit/regression tests | Required correctness gate |
+| Performance-sensitive PR, manual CI request, or `perf-benchmark` label | `./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly` | Fast structural/scaling check |
+| Manual CI or developer smoke test | `./benchmarks/run-virtualization-benchmarks.ps1 -SkipProbe -Quick -BenchmarkFilter "*SelectInitialRenderBenchmarks*"` | Short BenchmarkDotNet comparison |
+| Final performance evidence | `./benchmarks/run-virtualization-benchmarks.ps1 -BaselineRef <baseline-sha> -FixedRef <candidate-sha>` | Full same-machine before/after run |
+
+Do not make elapsed-time thresholds from shared hosted runners a required merge gate. Runner hardware and contention vary. Component counts, shadow-item counts, allocations and scaling shape are more useful CI signals; final timing evidence should come from repeated runs on the same workstation or a stable dedicated runner.
+
+### Developer workstation
+
+Requirements are Git, PowerShell 7+ and the .NET 10 SDK. Run from the repository root.
+
+Fast structural probe:
+
+```powershell
+./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly
+```
+
+Focused smoke benchmark:
+
+```powershell
+./benchmarks/run-virtualization-benchmarks.ps1 `
+    -SkipProbe `
+    -Quick `
+    -BenchmarkFilter "*SelectInitialRenderBenchmarks*"
+```
+
+Full before/after evidence against an explicit baseline:
+
+```powershell
+./benchmarks/run-virtualization-benchmarks.ps1 `
+    -BaselineRef <baseline-sha> `
+    -FixedRef HEAD
+```
+
+`FixedRef` defaults to `HEAD`, so a developer can simply check out the candidate branch and run the script. For published evidence, pass both refs explicitly and retain the generated `run-info.txt` and per-variant `source.txt` files.
+
+### Conditional CI example
+
+A downstream GitHub Actions pipeline can keep benchmarks disabled by default and enable them for a manual dispatch or a PR label:
+
+```yaml
+- name: Virtualized selection performance probe
+  if: >
+    github.event_name == 'workflow_dispatch' ||
+    contains(github.event.pull_request.labels.*.name, 'perf-benchmark')
+  shell: pwsh
+  run: >
+    ./benchmarks/run-virtualization-benchmarks.ps1
+    -ProbeOnly
+    -BaselineRef "${{ github.event.pull_request.base.sha }}"
+    -FixedRef "${{ github.sha }}"
+    -ResultsDirectory "${{ github.workspace }}/benchmark-results"
+
+- name: Upload benchmark evidence
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: virtualization-benchmark-results
+    path: benchmark-results
+```
+
+The same pattern works in other CI systems: put the script invocation behind an explicit pipeline variable/parameter such as `RUN_VIRTUALIZATION_BENCHMARKS=true`, a performance label, a changed-path rule, or a manually selected stage. The script itself stays CI-agnostic.
 ## Interpretation
 
 The key expected scaling characteristic is that a virtualized select should not instantiate an item component for every member of `ItemCollection` merely to retain selected-value presentation state. Large changes in allocated bytes, retained component count and GC pressure are therefore meaningful. Small absolute timing differences for 10- or 100-item collections should be treated cautiously.
