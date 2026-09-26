@@ -1,0 +1,134 @@
+From ed0af66d88524998bb685dc587ec990dbfbccb44 Mon Sep 17 00:00:00 2001
+From: aarondglover <8821892+aarondglover@users.noreply.github.com>
+Date: Sat, 26 Sep 2026 17:47:26 +0000
+Subject: [PATCH] Refactor select state ownership and refresh hosted lists
+
+---
+ .../ListExtended/MudListExtended.razor.cs     |  18 +-
+ .../SelectExtended/IMudSelectExtended.cs      |   4 -
+ .../MudSelectExtended.PresentationState.cs    |  98 ++++++++++
+ .../MudSelectExtended.SelectionText.cs        |  18 ++
+ .../MudSelectExtended.ShadowItems.cs          |  24 ---
+ ...SelectExtended.VirtualizedSelectionText.cs |  19 --
+ .../SelectExtended/MudSelectExtended.razor    |  49 ++---
+ .../SelectExtended/MudSelectExtended.razor.cs | 171 ++++++++----------
+ .../MudSelectItemExtended.razor.cs            |  86 ++++-----
+ .../MudSelectItemGroupExtended.razor          |  32 ++--
+ .../SelectItemCollectionRefreshTest.razor     |  18 ++
+ .../SelectExtended/SelectTextValueTest.razor  |   2 +
+ ...electExtendedItemCollectionRefreshTests.cs |  27 +++
+ .../SelectExtendedPresentationStateTests.cs   |  49 +++++
+ .../Components/SelectExtendedTests.cs         |   8 +-
+ .../SelectExtendedVirtualizationScaleTests.cs |  17 +-
+ ...endedVirtualizationSingleSelectionTests.cs |  10 +-
+ ...SelectExtendedVirtualizationStrictTests.cs |  11 +-
+ .../SelectExtendedVirtualizationTests.cs      |  28 ++-
+ 19 files changed, 403 insertions(+), 286 deletions(-)
+ create mode 100644 src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.PresentationState.cs
+ create mode 100644 src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.SelectionText.cs
+ delete mode 100644 src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.ShadowItems.cs
+ delete mode 100644 src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.VirtualizedSelectionText.cs
+ create mode 100644 tests/CodeBeam.MudBlazor.Extensions.UnitTests.Viewer/TestComponents/SelectExtended/SelectItemCollectionRefreshTest.razor
+ create mode 100644 tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedItemCollectionRefreshTests.cs
+ create mode 100644 tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedPresentationStateTests.cs
+
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/ListExtended/MudListExtended.razor.cs b/src/CodeBeam.MudBlazor.Extensions/Components/ListExtended/MudListExtended.razor.cs
+index c465e73..1bd3d70 100644
+--- a/src/CodeBeam.MudBlazor.Extensions/Components/ListExtended/MudListExtended.razor.cs
++++ b/src/CodeBeam.MudBlazor.Extensions/Components/ListExtended/MudListExtended.razor.cs
+@@ -704,22 +704,16 @@ namespace MudExtensions
+         /// </summary>
+         /// <param name="parameters"></param>
+         /// <returns></returns>
+-        public override Task SetParametersAsync(ParameterView parameters)
++        public override async Task SetParametersAsync(ParameterView parameters)
+         {
+             if (_centralCommanderIsProcessing)
+-            {
+-                return Task.CompletedTask;
+-            }
+-
+-            if (MudSelectExtended != null || MudAutocomplete != null)
+-            {
+-                return Task.CompletedTask;
+-            }
+-
+-            base.SetParametersAsync(parameters).CatchAndLog();
++                return;
+ 
++            // Hosted lists still need normal Blazor parameter flow. Previously every parameter set
++            // after the select/autocomplete cascade became available was discarded, freezing
++            // ItemCollection and all other parent-driven parameters while the popover was open.
++            await base.SetParametersAsync(parameters);
+             _setParametersDone = true;
+-            return Task.CompletedTask;
+         }
+ 
+         /// <summary>
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/IMudSelectExtended.cs b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/IMudSelectExtended.cs
+index b20653a..44b7f59 100644
+--- a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/IMudSelectExtended.cs
++++ b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/IMudSelectExtended.cs
+@@ -6,8 +6,4 @@ namespace MudExtensions
+         void CheckGenericTypeMatch(object select_item);
+         bool MultiSelection { get; set; }
+     }
+-
+-    internal interface IMudShadowSelectExtended
+-    {
+-    }
+ }
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.PresentationState.cs b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.PresentationState.cs
+new file mode 100644
+index 0000000..b0d0751
+--- /dev/null
++++ b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.PresentationState.cs
+@@ -0,0 +1,98 @@
++using System.Collections.Generic;
++using System.Linq;
++using Microsoft.AspNetCore.Components;
++
++namespace MudExtensions
++{
++    public partial class MudSelectExtended<T>
++    {
++        private bool ValuesEqual(T? left, T? right)
++            => (_comparer ?? EqualityComparer<T?>.Default).Equals(left, right);
++
++        private bool TryGetCollectionValue(T? value, out T? collectionValue)
++        {
++            if (ItemCollection != null)
++            {
++                foreach (var item in ItemCollection)
++                {
++                    if (ValuesEqual(item, value))
++                    {
++                        collectionValue = item;
++                        return true;
++                    }
++                }
++            }
++
++            collectionValue = default;
++            return false;
++        }
++
++        private MudSelectItemExtended<T?>? FindRegisteredItem(T? value)
++            => Items?.FirstOrDefault(item => ValuesEqual(item.Value, value));
++
++        /// <summary>
++        /// Resolves the selected option for ItemContent presentation without requiring that
++        /// option to have a currently rendered list-item component.
++        /// </summary>
++        private MudListItemExtended<T?>? GetSelectedPresentationItem()
++        {
++            if (ItemCollection != null)
++            {
++                if (!TryGetCollectionValue(ReadValue, out var collectionValue))
++                    return null;
++
++                return CreatePresentationItem(
++                    collectionValue,
++                    ToStringFunc?.Invoke(collectionValue) ?? collectionValue?.ToString(),
++                    childContent: null,
++
