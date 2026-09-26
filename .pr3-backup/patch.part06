@@ -1,0 +1,115 @@
++        {
++            var cut = Context.Render<SelectItemCollectionRefreshTest>();
++
++            cut.Find("div.mud-input-control").Click();
++            cut.WaitForAssertion(() =>
++                cut.FindAll("div.mud-list-item-extended").Should().HaveCount(5));
++
++            await cut.InvokeAsync(cut.Instance.AddMore);
++
++            // The same ItemCollection instance was mutated while the popover remained open.
++            // Hosted MudListExtended previously discarded this parameter update entirely (#645).
++            cut.WaitForAssertion(() =>
++                cut.FindAll("div.mud-list-item-extended").Should().HaveCount(10));
++        }
++    }
++}
+diff --git a/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedPresentationStateTests.cs b/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedPresentationStateTests.cs
+new file mode 100644
+index 0000000..9a6e984
+--- /dev/null
++++ b/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedPresentationStateTests.cs
+@@ -0,0 +1,49 @@
++using AwesomeAssertions;
++using Bunit;
++using Microsoft.AspNetCore.Components;
++
++namespace MudExtensions.UnitTests.Components
++{
++    [TestFixture]
++    public class SelectExtendedPresentationStateTests : BunitTest
++    {
++        [Test]
++        public void DeclarativeItems_RegisterMetadataWithoutHiddenList()
++        {
++            RenderFragment childContent = builder =>
++            {
++                builder.OpenComponent<MudSelectItemExtended<string>>(0);
++                builder.AddAttribute(1, nameof(MudSelectItemExtended<string>.Value), "two");
++                builder.AddAttribute(2, nameof(MudSelectItemExtended<string>.Text), "Friendly two");
++                builder.CloseComponent();
++            };
++
++            var cut = Context.Render<MudSelectExtended<string>>(parameters => parameters
++                .Add(x => x.Value, "two")
++                .Add(x => x.ChildContent, childContent));
++
++            cut.WaitForAssertion(() =>
++                cut.Find("input").Attributes["value"]?.Value.Should().Be("Friendly two"));
++
++            cut.Instance.Items.Should().ContainSingle();
++            cut.FindComponents<MudListExtended<string>>().Should().BeEmpty();
++            cut.FindComponents<MudSelectItemExtended<string>>().Should().ContainSingle();
++        }
++
++        [Test]
++        public async Task ItemCollection_SelectOptionByIndex_UsesLogicalCollection()
++        {
++            var items = new List<string?> { "one", "two", "three" };
++
++            var cut = Context.Render<MudSelectExtended<string?>>(parameters => parameters
++                .Add(x => x.ItemCollection, items)
++                .Add(x => x.Virtualize, true));
++
++            await cut.InvokeAsync(() => cut.Instance.SelectOption(1));
++
++            cut.WaitForAssertion(() =>
++                cut.Find("input").Attributes["value"]?.Value.Should().Be("two"));
++            cut.Instance.Items.Should().BeEmpty();
++        }
++    }
++}
+diff --git a/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedTests.cs b/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedTests.cs
+index 42aeabe..735456c 100644
+--- a/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedTests.cs
++++ b/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedTests.cs
+@@ -548,8 +548,8 @@ namespace MudExtensions.UnitTests.Components
+             var selectElement = comp.Find("div.mud-input-control");
+             selectElement.Click();
+ 
+-            // Disabled item found twice because we have 2 shadow lists. Need to be discussed later
+-            comp.WaitForAssertion(() => comp.FindAll("div.mud-list-item-disabled-extended").Count.Should().Be(2));
++            // The disabled option should exist once in the visible list; there is no hidden duplicate tree.
++            comp.WaitForAssertion(() => comp.FindAll("div.mud-list-item-disabled-extended").Count.Should().Be(1));
+             comp.FindAll("div.mud-list-item-disabled-extended")[0].Click();
+             comp.WaitForAssertion(() => select.Instance.GetState(x => x.Value).Should().BeNull());
+         }
+@@ -946,7 +946,7 @@ namespace MudExtensions.UnitTests.Components
+             //Console.WriteLine(comp.Markup);
+             comp.WaitForAssertion(() => comp.Find("div.mud-popover").ClassList.Should().Contain("mud-popover-open"));
+             // Nr 2 should be hilited
+-            comp.WaitForAssertion(() => comp.FindAll("div.mud-selected-item").Count.Should().Be(2));
++            comp.WaitForAssertion(() => comp.FindAll("div.mud-selected-item").Count.Should().Be(1));
+             comp.FindAll("div.mud-list-item-extended")[1].ToMarkup().Should().Contain("mud-selected-item");
+             // now click an item and see the value change
+             comp.FindAll("div.mud-list-item-extended")[0].Click();
+@@ -956,7 +956,7 @@ namespace MudExtensions.UnitTests.Components
+             comp.Find("div.mud-input-control").Click();
+             comp.WaitForAssertion(() => comp.Find("div.mud-popover").ClassList.Should().Contain("mud-popover-open"));
+             // Nr 1 should be hilited
+-            comp.WaitForAssertion(() => comp.FindAll("div.mud-selected-item").Count.Should().Be(2));
++            comp.WaitForAssertion(() => comp.FindAll("div.mud-selected-item").Count.Should().Be(1));
+             comp.FindAll("div.mud-list-item-extended")[0].ToMarkup().Should().Contain("mud-selected-item");
+             comp.Find("div.mud-input-control").Click();
+             comp.WaitForAssertion(() => comp.Find("div.mud-popover").ClassList.Should().NotContain("mud-popover-open"));
+diff --git a/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedVirtualizationScaleTests.cs b/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedVirtualizationScaleTests.cs
+index 1d43e2a..611bf28 100644
+--- a/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedVirtualizationScaleTests.cs
++++ b/tests/CodeBeam.MudBlazor.Extensions.UnitTests/Components/SelectExtendedVirtualizationScaleTests.cs
+@@ -10,7 +10,7 @@ namespace MudExtensions.UnitTests.Components
+         [TestCase(100)]
+         [TestCase(1_000)]
+         [TestCase(4_000)]
+-        public void ShadowItemCount_IsBoundedBySelection_NotCollectionSize(int itemCount)
++        public void VirtualizedItemCollection_DoesNotMaterializeShadowList(int itemCount)
+         {
