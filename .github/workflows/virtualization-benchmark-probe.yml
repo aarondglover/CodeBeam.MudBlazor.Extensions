@@ -21,7 +21,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -46,13 +45,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
-      - name: Run authoritative upstream-to-HEAD BenchmarkDotNet comparison
+      - name: Run authoritative upstream-to-candidate BenchmarkDotNet comparison
         shell: pwsh
         run: ./benchmarks/run-virtualization-benchmarks.ps1 -SkipProbe -Quick -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -FixedRef "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}" -BenchmarkFilter "*SelectInitialRenderBenchmarks*" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
 
