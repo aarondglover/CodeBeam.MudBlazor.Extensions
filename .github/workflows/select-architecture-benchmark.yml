@@ -22,13 +22,21 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Compare #648 with architecture candidate
+      - name: Compare upstream dev with #648
         shell: pwsh
-        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "e7020d49a824a371ab3f3450255f10d9cfad8783" -FixedRef "origin/architecture/select-value-state" -ResultsDirectory "$env:GITHUB_WORKSPACE/architecture-benchmark-results"
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -FixedRef "e7020d49a824a371ab3f3450255f10d9cfad8783" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results/upstream-vs-648"
+
+      - name: Compare #648 with PR3 architecture
+        shell: pwsh
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "e7020d49a824a371ab3f3450255f10d9cfad8783" -FixedRef "origin/architecture/select-value-state" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results/648-vs-pr3"
+
+      - name: Compare upstream dev with PR3 architecture
+        shell: pwsh
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -FixedRef "origin/architecture/select-value-state" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results/upstream-vs-pr3"
 
       - name: Upload probe results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: select-architecture-benchmark
-          path: architecture-benchmark-results
+          path: benchmark-results
