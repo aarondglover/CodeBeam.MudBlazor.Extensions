@@ -30,7 +30,7 @@ jobs:
           git clean -fdx
           git am /tmp/candidate.patch
 
-          test "$(git rev-parse HEAD^{tree})" = "1af6d104489931a44bd1b76fa893f909f520f51a"
+          test "$(git rev-parse HEAD^{tree})" = "dc5eb5ffec85bb9f85a1a7e26d20a42d4bad0587"
           git diff --check HEAD^
 
       - name: Setup .NET
