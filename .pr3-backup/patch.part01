@@ -1,0 +1,142 @@
++                    disabled: ItemDisabledFunc?.Invoke(collectionValue) == true);
++            }
++
++            var registeredItem = FindRegisteredItem(ReadValue);
++            if (registeredItem != null)
++            {
++                return CreatePresentationItem(
++                    registeredItem.Value,
++                    registeredItem.Text,
++                    registeredItem.ChildContent,
++                    ItemDisabledFunc?.Invoke(registeredItem.Value) ?? registeredItem.Disabled,
++                    registeredItem.IsFunctional,
++                    registeredItem.Href,
++                    registeredItem.Class,
++                    registeredItem.Style);
++            }
++
++            return SelectedListItem != null && ValuesEqual(SelectedListItem.Value, ReadValue)
++                ? SelectedListItem
++                : null;
++        }
++
++#pragma warning disable BL0005 // Parameters are populated on an unrendered context object for ItemTemplate.
++        private static MudListItemExtended<T?> CreatePresentationItem(
++            T? value,
++            string? text,
++            RenderFragment? childContent,
++            bool disabled,
++            bool isFunctional = false,
++            string? href = null,
++            string? @class = null,
++            string? style = null)
++        {
++            var item = new MudListItemExtended<T?>
++            {
++                Value = value,
++                Text = text,
++                ChildContent = childContent,
++                Disabled = disabled,
++                IsFunctional = isFunctional,
++                Href = href,
++                Class = @class,
++                Style = style
++            };
++
++            item.SetSelected(true, forceRender: false);
++            return item;
++        }
++#pragma warning restore BL0005
++    }
++}
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.SelectionText.cs b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.SelectionText.cs
+new file mode 100644
+index 0000000..d09de58
+--- /dev/null
++++ b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.SelectionText.cs
+@@ -0,0 +1,18 @@
++namespace MudExtensions
++{
++    public partial class MudSelectExtended<T>
++    {
++        /// <inheritdoc />
++        protected override async Task OnParametersSetAsync()
++        {
++            await base.OnParametersSetAsync();
++
++            // SelectedValues is a synchronous parameter setter. Its existing async text update
++            // cannot be awaited there, so reconcile collection-backed presentation after the
++            // complete parameter set has been applied. This is value-driven and does not depend
++            // on any MudSelectItemExtended component being materialized.
++            if (MultiSelection && ItemCollection is not null)
++                await UpdateTextPropertyAsync(false);
++        }
++    }
++}
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.ShadowItems.cs b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.ShadowItems.cs
+deleted file mode 100644
+index 078ee74..0000000
+--- a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.ShadowItems.cs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-using System.Collections.Generic;
+-using System.Linq;
+-
+-namespace MudExtensions
+-{
+-    public partial class MudSelectExtended<T>
+-    {
+-        /// <summary>
+-        /// Returns the values that must be materialized by the hidden list.
+-        /// Non-virtualized selects preserve the existing full item registry behavior;
+-        /// virtualized selects only materialize selected values that exist in the current item collection.
+-        /// </summary>
+-        protected ICollection<T?>? GetShadowItemCollection()
+-        {
+-            if (ItemCollection == null || !Virtualize)
+-            {
+-                return ItemCollection;
+-            }
+-
+-            var selectedValues = SelectedValues?.ToHashSet(_comparer) ?? new HashSet<T?>(_comparer);
+-            return [.. ItemCollection.Where(selectedValues.Contains)];
+-        }
+-    }
+-}
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.VirtualizedSelectionText.cs b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.VirtualizedSelectionText.cs
+deleted file mode 100644
+index 3261f85..0000000
+--- a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.VirtualizedSelectionText.cs
++++ /dev/null
+@@ -1,19 +0,0 @@
+-namespace MudExtensions
+-{
+-    public partial class MudSelectExtended<T>
+-    {
+-        protected override async Task OnParametersSetAsync()
+-        {
+-            await base.OnParametersSetAsync();
+-
+-            // SelectedValues is a synchronous parameter setter. Its existing async text
+-            // updates cannot be awaited there, so reconcile the displayed text once
+-            // the incoming parameter set has been applied. Do not depend on the newly
+-            // selected shadow item having rendered yet.
+-            if (Virtualize && MultiSelection && ItemCollection is not null)
+-            {
+-                await UpdateTextPropertyAsync(false);
+-            }
+-        }
+-    }
+-}
+diff --git a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor
+index 482cc2f..70c476a 100644
+--- a/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor
++++ b/src/CodeBeam.MudBlazor.Extensions/Components/SelectExtended/MudSelectExtended.razor
+@@ -74,14 +74,14 @@
+                                     <MudChipSet T="T" Class="@InputChipClassname" AllClosable="ChipCloseable" OnClose="ChipClosed">
+                                         @if (ItemCollection != null)
+                                         {
+-                                            foreach (var item in ItemCollection.Where(x => SelectedValues?.Contains(x) == true))
++                                            foreach (var item in ItemCollection.Where(x => SelectedValues?.Contains(x, _comparer) == true))
+                                             {
+                                                 <MudChip Class="@ChipClass" Value="@item" Text="@ConvertSet(item)" Color="@Color" Size="@ChipSize" Variant="@ChipVariant" />
