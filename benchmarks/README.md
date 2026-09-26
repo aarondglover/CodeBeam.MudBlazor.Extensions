@@ -56,3 +56,7 @@ The key expected scaling characteristic is that a virtualized select should not 
 The direct-list cases are intentionally included as a control: the `MudListExtended` selection-state correction should preserve reasonable list-render scaling rather than trading the select improvement for a list regression.
 
 GitHub-hosted runners are useful for build validation and preliminary measurements, but final before/after numbers should preferably come from repeated runs on the same workstation because hosted-runner hardware and contention can vary.
+
+## Reproducibility
+
+Final before/after results must be produced from a benchmark branch containing the exact PR1 candidate being evaluated. Record the candidate commit SHA with the results so benchmark evidence cannot drift from the implementation under review.
