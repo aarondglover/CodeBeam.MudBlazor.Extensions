@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$BaselineRef = "d0ae5981e80c4a493b29ccff7a7cb80b22fce0d5",
+    [string]$BaselineRef = "7b5faf7ebb7666558d13c447313e9b09c92a110d",
     [string]$FixedRef = "HEAD",
     [string]$ResultsDirectory,
     [string]$BenchmarkFilter = "*",
