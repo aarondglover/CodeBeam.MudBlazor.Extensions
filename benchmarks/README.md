@@ -127,6 +127,15 @@ The direct-list cases are intentionally included as a control: the `MudListExten
 
 GitHub-hosted runners are useful for build validation and preliminary measurements, but final before/after numbers should preferably come from repeated runs on the same workstation because hosted-runner hardware and contention can vary.
 
+## Reference baseline used by this PR
+
+For the final PR1/PR2 comparison in this branch, the baseline is pinned to upstream `CodeBeamOrg/CodeBeam.MudBlazor.Extensions` `dev` at:
+
+`7b5faf7ebb7666558d13c447313e9b09c92a110d`
+
+This is the upstream `dev` commit immediately before the PR1 candidate branch diverges for this comparison. The fixed side defaults to the checked-out benchmark branch `HEAD`, which contains the exact PR1 implementation under test plus the benchmark harness.
+
+The runner records both resolved SHAs in `run-info.txt` and each variant's `source.txt`, so any published result can be traced to an exact point in the Git graph.
 ## Reproducibility
 
 Final before/after results must be produced from a benchmark branch containing the exact PR1 candidate being evaluated. Record the candidate commit SHA with the results so benchmark evidence cannot drift from the implementation under review.
