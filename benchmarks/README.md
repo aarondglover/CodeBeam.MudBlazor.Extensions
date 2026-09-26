@@ -29,6 +29,29 @@ A separate `probe` mode records Blazor-specific shape metrics which BenchmarkDot
 
 The probe is diagnostic evidence, not a substitute for BenchmarkDotNet statistics.
 
+
+## Three-stage evidence
+
+The runner can optionally measure an intermediate Git graph point as well as the normal baseline and candidate:
+
+1. **Upstream baseline** — the exact upstream `dev` commit used as the reference.
+2. **Stage 1 / first fix** — `76b806ec54cdb43c9b5171bbbd10d4759014583f`, the historical implementation point that the benchmark harness originally treated as its fixed side.
+3. **Current candidate / HEAD** — the current implementation being evaluated.
+
+Run the three-stage structural probe with:
+
+```powershell
+./benchmarks/run-virtualization-benchmarks.ps1 \
+    -ProbeOnly \
+    -BaselineRef 7b5faf7ebb7666558d13c447313e9b09c92a110d \
+    -Stage1Ref 76b806ec54cdb43c9b5171bbbd10d4759014583f \
+    -FixedRef HEAD
+```
+
+When `Stage1Ref` is supplied, the runner writes `comparison-summary.md` alongside the raw CSV files. This is intended to document how the implementation evolved; it is **not** the merge/regression baseline.
+
+The authoritative final comparison remains **upstream `dev` -> current HEAD**. CI therefore includes Stage 1 in the structural probe, but the focused BenchmarkDotNet regression job compares only upstream baseline versus HEAD.
+
 ## Run baseline and fixed code on the same workstation
 
 From the benchmark branch:
@@ -37,7 +60,7 @@ From the benchmark branch:
 ./benchmarks/run-virtualization-benchmarks.ps1
 ```
 
-The script creates temporary detached Git worktrees for the baseline and fixed SHAs, copies the exact same benchmark harness into each, and runs both variants sequentially on the same machine. It records the resolved SHAs and `dotnet --info` alongside the output.
+The script creates temporary detached Git worktrees for the requested graph points, copies the exact same benchmark harness into each, and runs the variants sequentially on the same machine. It records every resolved SHA and `dotnet --info` alongside the output. `Stage1Ref` is optional; without it the runner behaves as the normal two-way baseline/candidate comparison.
 
 For a faster smoke run:
 
@@ -135,7 +158,13 @@ For the final PR1/PR2 comparison in this branch, the baseline is pinned to upstr
 
 This is the upstream `dev` commit immediately before the PR1 candidate branch diverges for this comparison. The fixed side defaults to the checked-out benchmark branch `HEAD`, which contains the exact PR1 implementation under test plus the benchmark harness.
 
-The runner records both resolved SHAs in `run-info.txt` and each variant's `source.txt`, so any published result can be traced to an exact point in the Git graph.
+For historical three-stage evidence, Stage 1 is pinned to:
+
+`76b806ec54cdb43c9b5171bbbd10d4759014583f`
+
+Stage 1 is supplemental evidence only. Performance regression conclusions and final BenchmarkDotNet numbers must compare the upstream baseline directly with the candidate `HEAD`.
+
+The runner records all resolved SHAs in `run-info.txt` and each variant's `source.txt`, so any published result can be traced to an exact point in the Git graph.
 ## Reproducibility
 
 Final before/after results must be produced from a benchmark branch containing the exact PR1 candidate being evaluated. Record the candidate commit SHA with the results so benchmark evidence cannot drift from the implementation under review.

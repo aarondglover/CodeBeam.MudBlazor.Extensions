@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$BaselineRef = "7b5faf7ebb7666558d13c447313e9b09c92a110d",
+    [string]$Stage1Ref,
     [string]$FixedRef = "HEAD",
     [string]$ResultsDirectory,
     [string]$BenchmarkFilter = "*",
@@ -46,6 +47,7 @@ function Invoke-Checked([string]$command, [string[]]$arguments) {
 }
 
 $baselineSha = Resolve-Commit $BaselineRef
+$stage1Sha = if ([string]::IsNullOrWhiteSpace($Stage1Ref)) { $null } else { Resolve-Commit $Stage1Ref }
 $fixedSha = Resolve-Commit $FixedRef
 $benchmarksSource = Join-Path $repoRoot "benchmarks"
 $workRoot = Join-Path ([IO.Path]::GetTempPath()) "CodeBeamMudExtensionsBenchmarks-$([Guid]::NewGuid().ToString('N'))"
@@ -109,10 +111,138 @@ function Invoke-Variant([string]$name, [string]$sha) {
     Invoke-Checked dotnet $benchmarkArguments.ToArray()
 }
 
+
+function Format-SummaryBytes([double]$bytes) {
+    $absolute = [Math]::Abs($bytes)
+    if ($absolute -ge 1GB) { return "{0:F2} GB" -f ($bytes / 1GB) }
+    if ($absolute -ge 1MB) { return "{0:F2} MB" -f ($bytes / 1MB) }
+    if ($absolute -ge 1KB) { return "{0:F1} KB" -f ($bytes / 1KB) }
+    return "{0:F0} B" -f $bytes
+}
+
+function Get-ProbeRow([string]$variant, [int]$itemCount, [int]$selectCount, [int]$selectedCount, [bool]$virtualize) {
+    $path = Join-Path $ResultsDirectory "$variant/scale-probe.csv"
+    if (-not (Test-Path $path)) {
+        return $null
+    }
+
+    return Import-Csv $path |
+        Where-Object {
+            [int]$_.ItemCount -eq $itemCount -and
+            [int]$_.SelectCount -eq $selectCount -and
+            [int]$_.SelectedCount -eq $selectedCount -and
+            [bool]::Parse($_.Virtualize) -eq $virtualize
+        } |
+        Select-Object -First 1
+}
+
+function Get-ProbeValue($row, [string]$property) {
+    if ($null -eq $row) {
+        return $null
+    }
+
+    return [double]$row.PSObject.Properties[$property].Value
+}
+
+function Format-ProbeValue([string]$property, $value) {
+    if ($null -eq $value) {
+        return "—"
+    }
+
+    switch ($property) {
+        "ElapsedMilliseconds" { return "{0:F2} ms" -f $value }
+        "AllocatedBytes" { return Format-SummaryBytes $value }
+        "ApproxRetainedBytes" { return Format-SummaryBytes $value }
+        default { return "{0:N0}" -f $value }
+    }
+}
+
+function Format-Reduction($baselineValue, $fixedValue) {
+    if ($null -eq $baselineValue -or $null -eq $fixedValue -or $fixedValue -le 0) {
+        return "—"
+    }
+
+    $factor = $baselineValue / $fixedValue
+    if ($factor -ge 1) {
+        return "{0:F1}x lower" -f $factor
+    }
+
+    return "{0:F1}x higher" -f (1 / $factor)
+}
+
+function Write-ProbeComparisonSummary {
+    if ($SkipProbe) {
+        return
+    }
+
+    $scenarios = @(
+        @{ Name = "4,000 items x 1 select"; Items = 4000; Selects = 1; Selected = 2; Virtualize = $true },
+        @{ Name = "4,000 items x 5 selects"; Items = 4000; Selects = 5; Selected = 2; Virtualize = $true },
+        @{ Name = "4,000 items x 20 selects"; Items = 4000; Selects = 20; Selected = 2; Virtualize = $true },
+        @{ Name = "4,000 items, 100 selected"; Items = 4000; Selects = 1; Selected = 100; Virtualize = $true }
+    )
+
+    $metrics = @(
+        @{ Name = "Materialized components"; Property = "SelectItemComponentCount" },
+        @{ Name = "Allocated"; Property = "AllocatedBytes" },
+        @{ Name = "Approx. retained"; Property = "ApproxRetainedBytes" },
+        @{ Name = "One-shot elapsed"; Property = "ElapsedMilliseconds" }
+    )
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines.Add("# Virtualized selection comparison")
+    $lines.Add("")
+    $lines.Add("Generated from the same benchmark harness against immutable Git graph points.")
+    $lines.Add("")
+    $lines.Add("- Upstream baseline: `$baselineSha` (`$BaselineRef`)")
+    if ($null -ne $stage1Sha) {
+        $lines.Add("- Stage 1: `$stage1Sha` (`$Stage1Ref`)")
+    }
+    $lines.Add("- Current candidate: `$fixedSha` (`$FixedRef`)")
+    $lines.Add("")
+    $lines.Add("The Stage 1 column is historical evidence only. The authoritative regression comparison is upstream baseline -> current candidate.")
+    $lines.Add("Probe elapsed/retained values are diagnostic; use BenchmarkDotNet baseline -> candidate results for final timing/allocation evidence.")
+    $lines.Add("")
+
+    if ($null -ne $stage1Sha) {
+        $lines.Add("| Scenario | Metric | Upstream baseline | Stage 1 | Current candidate | Baseline -> candidate |")
+        $lines.Add("| --- | --- | ---: | ---: | ---: | ---: |")
+    }
+    else {
+        $lines.Add("| Scenario | Metric | Upstream baseline | Current candidate | Baseline -> candidate |")
+        $lines.Add("| --- | --- | ---: | ---: | ---: |")
+    }
+
+    foreach ($scenario in $scenarios) {
+        $baselineRow = Get-ProbeRow "baseline" $scenario.Items $scenario.Selects $scenario.Selected $scenario.Virtualize
+        $stage1Row = if ($null -ne $stage1Sha) { Get-ProbeRow "stage1" $scenario.Items $scenario.Selects $scenario.Selected $scenario.Virtualize } else { $null }
+        $fixedRow = Get-ProbeRow "fixed" $scenario.Items $scenario.Selects $scenario.Selected $scenario.Virtualize
+
+        foreach ($metric in $metrics) {
+            $baselineValue = Get-ProbeValue $baselineRow $metric.Property
+            $stage1Value = Get-ProbeValue $stage1Row $metric.Property
+            $fixedValue = Get-ProbeValue $fixedRow $metric.Property
+
+            if ($null -ne $stage1Sha) {
+                $lines.Add("| $($scenario.Name) | $($metric.Name) | $(Format-ProbeValue $metric.Property $baselineValue) | $(Format-ProbeValue $metric.Property $stage1Value) | $(Format-ProbeValue $metric.Property $fixedValue) | $(Format-Reduction $baselineValue $fixedValue) |")
+            }
+            else {
+                $lines.Add("| $($scenario.Name) | $($metric.Name) | $(Format-ProbeValue $metric.Property $baselineValue) | $(Format-ProbeValue $metric.Property $fixedValue) | $(Format-Reduction $baselineValue $fixedValue) |")
+            }
+        }
+    }
+
+    $summaryPath = Join-Path $ResultsDirectory "comparison-summary.md"
+    $lines | Out-File -FilePath $summaryPath -Encoding utf8
+    Write-Host "Wrote $summaryPath"
+}
+
 try {
     @(
         "Baseline ref: $BaselineRef",
         "Baseline SHA: $baselineSha",
+        "Stage 1 ref: $Stage1Ref",
+        "Stage 1 SHA: $stage1Sha",
         "Fixed ref: $FixedRef",
         "Fixed SHA: $fixedSha",
         "Started: $([DateTimeOffset]::Now.ToString('O'))",
@@ -123,7 +253,11 @@ try {
     ) | Out-File -FilePath (Join-Path $ResultsDirectory "run-info.txt") -Encoding utf8
 
     Invoke-Variant "baseline" $baselineSha
+    if ($null -ne $stage1Sha) {
+        Invoke-Variant "stage1" $stage1Sha
+    }
     Invoke-Variant "fixed" $fixedSha
+    Write-ProbeComparisonSummary
 
     Write-Host "`nBenchmark results: $ResultsDirectory" -ForegroundColor Green
 }

@@ -26,9 +26,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Run baseline and fixed probes
+      - name: Run three-stage structural probe
         shell: pwsh
-        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -ProbeOnly -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -Stage1Ref "76b806ec54cdb43c9b5171bbbd10d4759014583f" -FixedRef HEAD -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
 
       - name: Upload probe results
         if: always()
@@ -50,9 +50,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Run focused BenchmarkDotNet comparison
+      - name: Run authoritative upstream-to-HEAD BenchmarkDotNet comparison
         shell: pwsh
-        run: ./benchmarks/run-virtualization-benchmarks.ps1 -SkipProbe -Quick -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -BenchmarkFilter "*SelectInitialRenderBenchmarks*" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
+        run: ./benchmarks/run-virtualization-benchmarks.ps1 -SkipProbe -Quick -BaselineRef "7b5faf7ebb7666558d13c447313e9b09c92a110d" -FixedRef HEAD -BenchmarkFilter "*SelectInitialRenderBenchmarks*" -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
 
       - name: Upload BenchmarkDotNet results
         if: always()
