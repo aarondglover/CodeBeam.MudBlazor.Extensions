@@ -1,0 +1,131 @@
+-        protected Dictionary<T, MudSelectItemExtended<T?>> _valueLookup = new();
+-        /// <summary>
+-        /// 
+-        /// </summary>
+-        protected Dictionary<T, MudSelectItemExtended<T?>> _shadowLookup = new();
+         private MudInputExtended<string> _elementReference = new();
+         internal bool _isOpen;
+         /// <summary>
+         /// 
+         /// </summary>
+         protected internal string? _currentIcon { get; set; }
+-        internal event Action<ICollection<T?>>? SelectionChangedFromOutside;
+ 
+         /// <summary>
+         /// 
+@@ -578,7 +572,6 @@ namespace MudExtensions
+                 }
+                 _selectedValuesSetterStarted = true;
+                 _selectedValues = new HashSet<T?>(set, _comparer);
+-                SelectionChangedFromOutside?.Invoke(new HashSet<T?>(_selectedValues, _comparer));
+                 if (!MultiSelection)
+                 {
+                     SetValueAndUpdateTextAsync(_selectedValues.FirstOrDefault()).CatchAndLog();
+@@ -694,34 +687,43 @@ namespace MudExtensions
+         /// <returns></returns>
+         protected override Task UpdateTextPropertyAsync(bool updateValue)
+         {
+-            List<string?> textList = new List<string?>();
+-            if (Items != null && Items.Any())
++            List<string?> textList = new();
++
++            if (ItemCollection != null)
+             {
+-                if (ItemCollection != null)
++                foreach (var selectedValue in SelectedValues ?? [])
+                 {
+-                    foreach (var val in SelectedValues ?? new List<T?>())
++                    if (TryGetCollectionValue(selectedValue, out var collectionValue))
+                     {
+-                        var collectionValue = ItemCollection.FirstOrDefault(x => x != null && (Comparer != null ? Comparer.Equals(x, val) : x.Equals(val)));
+-                        if (collectionValue != null)
+-                        {
+-                            textList.Add(ConvertSet(collectionValue));
+-                        }
++                        textList.Add(ConvertSet(collectionValue));
++                    }
++                    else if (!Strict)
++                    {
++                        textList.Add(ConvertSet(selectedValue));
+                     }
+                 }
+-                else
++            }
++            else if (Items is { Count: > 0 })
++            {
++                foreach (var selectedValue in SelectedValues ?? [])
+                 {
+-                    foreach (var val in SelectedValues ?? new List<T?>())
++                    // Preserve the existing declarative-item behavior: when a non-strict external
++                    // selection is represented by a different object instance, present that selected
++                    // value through the converter even if the custom comparer maps it to an item.
++                    if (!Strict && !Items.Select(item => item.Value).Contains(selectedValue))
+                     {
+-                        if (!Strict && !Items.Select(x => x.Value).Contains(val))
+-                        {
+-                            textList.Add(ToStringFunc != null ? ToStringFunc(val) : ConvertSet(val));
+-                            continue;
+-                        }
+-                        var item = Items.FirstOrDefault(x => x != null && (x.Value == null ? val == null : Comparer != null ? Comparer.Equals(x.Value, val) : x.Value.Equals(val)));
+-                        if (item != null)
+-                        {
+-                            textList.Add(!string.IsNullOrEmpty(item.Text) ? item.Text : ConvertSet(item.Value));
+-                        }
++                        textList.Add(ConvertSet(selectedValue));
++                        continue;
++                    }
++
++                    var item = FindRegisteredItem(selectedValue);
++                    if (item != null)
++                    {
++                        textList.Add(!string.IsNullOrEmpty(item.Text) ? item.Text : ConvertSet(item.Value));
++                    }
++                    else if (!Strict)
++                    {
++                        textList.Add(ConvertSet(selectedValue));
+                     }
+                 }
+             }
+@@ -736,20 +738,23 @@ namespace MudExtensions
+                         selectedConvertedValues: SelectedValues?.ToList(),
+                         multiSelectionTextFunc: MultiSelectionTextFunc, updateValue: updateValue);
+                 }
+-                else
+-                {
+-                    return SetTextAndUpdateValueAsync(string.Join(Delimiter, textList), updateValue: updateValue);
+-                }
++
++                return SetTextAndUpdateValueAsync(string.Join(Delimiter, textList), updateValue: updateValue);
+             }
+-            else
++
++            if (ItemCollection != null)
+             {
+-                var item = Items?.FirstOrDefault(x => ReadValue == null ? x.Value == null : Comparer != null ? Comparer.Equals(ReadValue, x.Value) : ReadValue.Equals(x.Value));
+-                if (item == null)
+-                {
+-                    return SetTextAndUpdateValueAsync(ConvertSet(ReadValue), false);
+-                }
+-                return SetTextAndUpdateValueAsync((!string.IsNullOrEmpty(item.Text) ? item.Text : ConvertSet(item.Value)), updateValue: updateValue);
++                return TryGetCollectionValue(ReadValue, out var collectionValue)
++                    ? SetTextAndUpdateValueAsync(ConvertSet(collectionValue), updateValue: updateValue)
++                    : SetTextAndUpdateValueAsync(ConvertSet(ReadValue), false);
+             }
++
++            var registeredItem = FindRegisteredItem(ReadValue);
++            return registeredItem == null
++                ? SetTextAndUpdateValueAsync(ConvertSet(ReadValue), false)
++                : SetTextAndUpdateValueAsync(
++                    !string.IsNullOrEmpty(registeredItem.Text) ? registeredItem.Text : ConvertSet(registeredItem.Value),
++                    updateValue: updateValue);
+         }
+ 
+         private string? GetSelectTextPresenter()
+@@ -825,7 +830,6 @@ namespace MudExtensions
+ 
+                 await UpdateTextPropertyAsync(false);
+                 _list?.ForceUpdateItems();
+-                SelectedListItem = Items.FirstOrDefault(x => x.Value != null && ReadValue != null && x.Value.Equals(ReadValue))?.ListItem;
+                 StateHasChanged();
+             }
+             //Console.WriteLine("Select rendered");
