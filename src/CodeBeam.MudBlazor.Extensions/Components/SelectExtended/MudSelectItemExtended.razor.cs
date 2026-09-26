@@ -15,40 +15,25 @@ namespace MudExtensions
             .Build();
 
         private IMudSelectExtended? _parent;
-        internal MudSelectExtended<T?>? MudSelectExtended => (MudSelectExtended<T?>?)IMudSelectExtended;
+        private MudSelectExtended<T?>? _registeredSelect;
+
+        internal MudSelectExtended<T?>? MudSelectExtended => (MudSelectExtended<T?>?)_parent;
+
         /// <summary>
         /// 
         /// </summary>
         public MudListItemExtended<T> ListItem { get; set; } = new();
         internal string ItemId { get; } = Identifier.Create("selectItem_");
 
-        private IMudShadowSelectExtended? _shadowParent;
         /// <summary>
-        /// The parent select component
+        /// The parent select component. Registration is reconciled in OnParametersSet so all
+        /// cascading parameters (including HideContent) have been applied before side effects run.
         /// </summary>
         [CascadingParameter]
         internal IMudSelectExtended? IMudSelectExtended
         {
             get => _parent;
-            set
-            {
-                _parent = value;
-                if (_parent == null)
-                    return;
-                _parent.CheckGenericTypeMatch(this);
-                if (MudSelectExtended == null)
-                    return;
-                bool isSelected = MudSelectExtended.Add(this);
-                if (_parent.MultiSelection)
-                {
-                    MudSelectExtended.SelectionChangedFromOutside += OnUpdateSelectionStateFromOutside;
-                    InvokeAsync(() => OnUpdateSelectionStateFromOutside(MudSelectExtended.SelectedValues));
-                }
-                else
-                {
-                    IsSelected = isSelected;
-                }
-            }
+            set => _parent = value;
         }
 
         /// <summary>
@@ -71,16 +56,6 @@ namespace MudExtensions
         /// </summary>
         [CascadingParameter(Name = "HideContent")]
         internal bool HideContent { get; set; }
-
-        private void OnUpdateSelectionStateFromOutside(IEnumerable<T?>? selection)
-        {
-            if (selection == null)
-                return;
-            var old_is_selected = IsSelected;
-            IsSelected = selection.Contains(Value);
-            if (old_is_selected != IsSelected)
-                InvokeAsync(StateHasChanged);
-        }
 
         /// <summary>
         /// A user-defined option that can be selected
@@ -131,18 +106,6 @@ namespace MudExtensions
         public bool Disabled { get; set; }
 
 
-        private bool _isSelected;
-        internal bool IsSelected
-        {
-            get => _isSelected;
-            set
-            {
-                if (_isSelected == value)
-                    return;
-                _isSelected = value;
-            }
-        }
-
         /// <summary>
         /// 
         /// </summary>
@@ -191,6 +154,32 @@ namespace MudExtensions
             return Disabled;
         }
 
+        /// <inheritdoc />
+        protected override void OnParametersSet()
+        {
+            base.OnParametersSet();
+
+            _parent?.CheckGenericTypeMatch(this);
+            var select = MudSelectExtended;
+
+            // Declarative ChildContent uses a metadata-only pass (HideContent=true). Collection-
+            // backed items are always transient view components; ItemCollection and selected values
+            // are authoritative regardless of whether the visible list itself is virtualized.
+            var shouldRegister = select != null && select.ItemCollection == null && HideContent;
+
+            if (!shouldRegister || !ReferenceEquals(_registeredSelect, select))
+            {
+                _registeredSelect?.Remove(this);
+                _registeredSelect = null;
+            }
+
+            if (shouldRegister && _registeredSelect == null)
+            {
+                select!.Add(this);
+                _registeredSelect = select;
+            }
+        }
+
         /// <summary>
         /// 
         /// </summary>
@@ -198,13 +187,8 @@ namespace MudExtensions
         {
             try
             {
-                if (MudSelectExtended is { } select)
-                {
-                    select.SelectionChangedFromOutside -= OnUpdateSelectionStateFromOutside;
-                    select.Remove(this);
-                }
-
-                ((MudSelectExtended<T?>?)_shadowParent)?.UnregisterShadowItem(this);
+                _registeredSelect?.Remove(this);
+                _registeredSelect = null;
             }
             catch (Exception) { }
         }
