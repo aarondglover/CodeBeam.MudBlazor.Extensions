@@ -1,0 +1,54 @@
+name: PR650 presentation validation and perf
+
+on:
+  push:
+    branches:
+      - validation/pr650-presentation-perf
+
+concurrency:
+  group: pr650-presentation-perf
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run focused regression tests
+        timeout-minutes: 2
+        run: >
+          dotnet test
+          tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj
+          --configuration Release
+          -f net10.0
+          --filter "Name=ItemCollection_SelectedObjectMutation_RefreshesClosedPresentation|Name=DeclarativeSelectedItemTextMutation_RefreshesClosedPresentation"
+          -m:1
+          -v:q
+          -clp:ErrorsOnly
+          --blame-hang-timeout 30s
+
+      - name: Compare current PR650 to presentation-fix candidate
+        timeout-minutes: 5
+        shell: pwsh
+        run: >
+          ./benchmarks/run-virtualization-benchmarks.ps1
+          -ProbeOnly
+          -BaselineRef "c2adfda6b6df235b9e85422d67e645217db9df67"
+          -FixedRef "7dbbbaff68eb545abb8809fa9e6149956fff1738"
+          -ResultsDirectory "$env:GITHUB_WORKSPACE/benchmark-results"
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr650-presentation-perf
+          path: benchmark-results
