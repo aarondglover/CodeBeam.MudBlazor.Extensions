@@ -1,0 +1,52 @@
+@namespace MudExtensions.UnitTests.TestComponents
+
+<MudPopoverProvider />
+
+<MudSelectExtended T="string" Value="@Selected">
+    <MudSelectItemExtended T="string" Value="@FirstValue" Text="@FirstText" Disabled="@FirstDisabled" />
+    @if (ShowSecond)
+    {
+        <MudSelectItemExtended T="string" Value="@SecondValue" Text="@SecondText" />
+    }
+</MudSelectExtended>
+
+@code {
+    private const string FirstValue = "one";
+    private const string SecondValue = "two";
+
+    public string Selected { get; private set; } = "one";
+    public string FirstText { get; private set; } = "One";
+    public string SecondText { get; private set; } = "Two";
+    public bool FirstDisabled { get; private set; }
+    public bool ShowSecond { get; private set; } = true;
+
+    public void RenameFirst(string text)
+    {
+        FirstText = text;
+        StateHasChanged();
+    }
+
+    public void RenameSecond(string text)
+    {
+        SecondText = text;
+        StateHasChanged();
+    }
+
+    public void DisableFirst()
+    {
+        FirstDisabled = true;
+        StateHasChanged();
+    }
+
+    public void RemoveSecond()
+    {
+        ShowSecond = false;
+        StateHasChanged();
+    }
+
+    public void AddSecond()
+    {
+        ShowSecond = true;
+        StateHasChanged();
+    }
+}
