@@ -27,4 +27,4 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Run live-mutation bUnit probes
-        run: dotnet test tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj --configuration Release -f net10.0 --no-build --filter FullyQualifiedName~SelectExtendedLiveItemMutationTests
+        run: dotnet test tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj --configuration Release -f net10.0 --filter FullyQualifiedName~SelectExtendedLiveItemMutationTests
