@@ -5,21 +5,36 @@ on:
     branches:
       - validation/pre648-presentation-baseline
 
+concurrency:
+  group: pre648-presentation-baseline
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
             8.0.x
             9.0.x
             10.0.x
-      - run: dotnet restore
+
+      - name: Restore
+        timeout-minutes: 5
+        run: dotnet restore -m:1
+
       - name: Run pre-648 presentation probes
+        timeout-minutes: 5
         run: >
-          dotnet test tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj
+          dotnet test
+          tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj
           --configuration Release
           -f net10.0
+          --no-restore
           --filter "Name=SelectedObjectMutation_ClosedSingleSelect_UpdatesDisplayedTextOnRerender|Name=DeclarativeSelectedItemTextMutation_UpdatesClosedPresentation"
+          -m:1
