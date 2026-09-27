@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Components;
-using MudBlazor.Utilities.Exceptions;
 
 namespace MudExtensions
 {
@@ -36,33 +35,10 @@ namespace MudExtensions
                 ? SelectedValues?.Contains(value, _comparer) == true
                 : ValuesEqual(ReadValue, value);
 
-        private bool _presentationRefreshPending;
-
-        /// <summary>
-        /// Coalesces presentation refreshes requested by declarative metadata items. Child item
-        /// parameters are applied after the select's own parameter lifecycle, so this refresh
-        /// runs after the current render batch and derives the closed presentation from the
-        /// updated registered metadata.
-        /// </summary>
-        internal void RequestDeclarativePresentationRefresh()
+        internal async Task RefreshPresentationAsync()
         {
-            if (_presentationRefreshPending)
-                return;
-
-            _presentationRefreshPending = true;
-
-            InvokeAsync(async () =>
-            {
-                try
-                {
-                    await UpdateTextPropertyAsync(false);
-                    StateHasChanged();
-                }
-                finally
-                {
-                    _presentationRefreshPending = false;
-                }
-            }).CatchAndLog();
+            await UpdateTextPropertyAsync(false);
+            StateHasChanged();
         }
 
         /// <summary>
