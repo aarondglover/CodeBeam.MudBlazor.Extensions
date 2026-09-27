@@ -10,7 +10,7 @@ public class SelectExtendedLiveItemMutationTests : BunitTest
     [Test]
     public async Task SelectedObjectMutation_ClosedSingleSelect_UpdatesDisplayedTextOnRerender()
     {
-        var cut = Context.Render<SelectMutableItemCollectionRefreshTest>();
+        var cut = Context.Render<SelectSingleItemCollectionMutationTest>();
 
         cut.Find("input").GetAttribute("value").Should().Be("Two");
 
