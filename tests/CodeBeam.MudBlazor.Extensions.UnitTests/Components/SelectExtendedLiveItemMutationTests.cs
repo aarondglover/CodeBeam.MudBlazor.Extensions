@@ -8,100 +8,59 @@ namespace MudExtensions.UnitTests.Components;
 public class SelectExtendedLiveItemMutationTests : BunitTest
 {
     [Test]
-    public void SelectedObjectMutation_ClosedSingleSelect_UpdatesDisplayedTextOnRerender()
+    public async Task SelectedObjectMutation_ClosedSingleSelect_UpdatesDisplayedTextOnRerender()
     {
-        var items = new List<MutableSelectItem?>
-        {
-            new(1, "One"),
-            new(2, "Two")
-        };
-        var selected = items[1]!;
-
-        var cut = Context.Render<MudSelectExtended<MutableSelectItem>>(parameters => parameters
-            .Add(x => x.ItemCollection, items)
-            .Add(x => x.Value, selected)
-            .Add(x => x.ToStringFunc, item => item?.Name));
+        var cut = Context.Render<SelectMutableItemCollectionRefreshTest>();
 
         cut.Find("input").GetAttribute("value").Should().Be("Two");
 
-        selected.Name = "Two updated";
-        cut.SetParametersAndRender(parameters => parameters
-            .Add(x => x.ItemCollection, items)
-            .Add(x => x.Value, selected)
-            .Add(x => x.ToStringFunc, item => item?.Name));
+        await cut.InvokeAsync(() => cut.Instance.RenameSelected("Two updated"));
 
         cut.WaitForAssertion(() =>
             cut.Find("input").GetAttribute("value").Should().Be("Two updated"));
     }
 
     [Test]
-    public void SelectedObjectMutation_ClosedMultiSelect_UpdatesDisplayedTextOnRerender()
+    public async Task SelectedObjectMutation_ClosedMultiSelect_UpdatesDisplayedTextOnRerender()
     {
-        var first = new MutableSelectItem(1, "One");
-        var second = new MutableSelectItem(2, "Two");
-        var items = new List<MutableSelectItem?> { first, second };
-        var selected = new MutableSelectItem?[] { first, second };
+        var cut = Context.Render<SelectMutableItemCollectionRefreshTest>();
 
-        var cut = Context.Render<MudSelectExtended<MutableSelectItem>>(parameters => parameters
-            .Add(x => x.ItemCollection, items)
-            .Add(x => x.MultiSelection, true)
-            .Add(x => x.SelectedValues, selected)
-            .Add(x => x.ToStringFunc, item => item?.Name));
+        await cut.InvokeAsync(cut.Instance.SelectFirstTwo);
+        cut.WaitForAssertion(() =>
+            cut.Find("input").GetAttribute("value").Should().Be("One, Two"));
 
-        cut.Find("input").GetAttribute("value").Should().Be("One, Two");
-
-        second.Name = "Two updated";
-        cut.SetParametersAndRender(parameters => parameters
-            .Add(x => x.ItemCollection, items)
-            .Add(x => x.MultiSelection, true)
-            .Add(x => x.SelectedValues, selected)
-            .Add(x => x.ToStringFunc, item => item?.Name));
+        await cut.InvokeAsync(() => cut.Instance.RenameSecond("Two updated"));
 
         cut.WaitForAssertion(() =>
             cut.Find("input").GetAttribute("value").Should().Be("One, Two updated"));
     }
 
     [Test]
-    public void ComparerMatchedSelection_UsesCurrentCollectionObjectForDisplay()
+    public async Task ComparerMatchedSelection_UsesCurrentCollectionObjectForDisplay()
     {
-        var collectionValue = new MutableSelectItem(2, "Two");
-        var externallySelectedValue = new MutableSelectItem(2, "Stale external text");
-        var items = new List<MutableSelectItem?> { collectionValue };
+        var cut = Context.Render<SelectMutableItemCollectionRefreshTest>();
 
-        var cut = Context.Render<MudSelectExtended<MutableSelectItem>>(parameters => parameters
-            .Add(x => x.ItemCollection, items)
-            .Add(x => x.Value, externallySelectedValue)
-            .Add(x => x.Comparer, new MutableSelectItemIdComparer())
-            .Add(x => x.ToStringFunc, item => item?.Name));
+        await cut.InvokeAsync(cut.Instance.UseComparerMatchedExternalSelection);
 
-        cut.Find("input").GetAttribute("value").Should().Be("Two");
+        cut.WaitForAssertion(() =>
+            cut.Find("input").GetAttribute("value").Should().Be("Two"));
 
-        collectionValue.Name = "Two updated";
-        cut.SetParametersAndRender(parameters => parameters
-            .Add(x => x.ItemCollection, items)
-            .Add(x => x.Value, externallySelectedValue)
-            .Add(x => x.Comparer, new MutableSelectItemIdComparer())
-            .Add(x => x.ToStringFunc, item => item?.Name));
+        await cut.InvokeAsync(() => cut.Instance.RenameFirst("Two updated"));
 
         cut.WaitForAssertion(() =>
             cut.Find("input").GetAttribute("value").Should().Be("Two updated"));
     }
 
     [Test]
-    public void ItemCollectionReplacement_WhileOpen_UpdatesVisibleItems()
+    public async Task ItemCollectionReplacement_WhileOpen_UpdatesVisibleItems()
     {
-        var initial = new List<string?> { "One", "Two" };
-
-        var cut = Context.Render<MudSelectExtended<string?>>(parameters => parameters
-            .Add(x => x.ItemCollection, initial));
+        var cut = Context.Render<SelectMutableItemCollectionRefreshTest>();
 
         cut.Find("div.mud-input-control").Click();
         cut.WaitForAssertion(() =>
-            cut.FindAll("div.mud-list-item-extended").Should().HaveCount(2));
+            cut.FindAll("div.mud-list-item-extended").Should().HaveCount(3));
 
-        var replacement = new List<string?> { "Alpha", "Beta", "Gamma" };
-        cut.SetParametersAndRender(parameters => parameters
-            .Add(x => x.ItemCollection, replacement));
+        await cut.InvokeAsync(cut.Instance.ReplaceCollection);
 
         cut.WaitForAssertion(() =>
         {
@@ -143,11 +102,5 @@ public class SelectExtendedLiveItemMutationTests : BunitTest
             items.Should().HaveCount(3);
             items[^1].TextContent.Should().Contain("Four");
         });
-    }
-    private sealed class MutableSelectItemIdComparer : IEqualityComparer<MutableSelectItem?>
-    {
-        public bool Equals(MutableSelectItem? x, MutableSelectItem? y) => x?.Id == y?.Id;
-
-        public int GetHashCode(MutableSelectItem? obj) => obj?.Id.GetHashCode() ?? 0;
     }
 }
