@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Components;
+using MudBlazor.Extensions;
 
 namespace MudExtensions
 {
@@ -29,6 +30,11 @@ namespace MudExtensions
 
         private MudSelectItemExtended<T?>? FindRegisteredItem(T? value)
             => Items?.FirstOrDefault(item => ValuesEqual(item.Value, value));
+
+        internal bool IsSelectedPresentationValue(T? value)
+            => MultiSelection
+                ? SelectedValues?.Contains(value, _comparer) == true
+                : ValuesEqual(ReadValue, value);
 
         private bool _presentationRefreshPending;
 
