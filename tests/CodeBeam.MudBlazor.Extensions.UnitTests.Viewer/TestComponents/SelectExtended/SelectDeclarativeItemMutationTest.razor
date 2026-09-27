@@ -3,14 +3,17 @@
 <MudPopoverProvider />
 
 <MudSelectExtended T="string" Value="@Selected">
-    <MudSelectItemExtended T="string" Value="one" Text="@FirstText" Disabled="@FirstDisabled" />
+    <MudSelectItemExtended T="string" Value="@FirstValue" Text="@FirstText" Disabled="@FirstDisabled" />
     @if (ShowSecond)
     {
-        <MudSelectItemExtended T="string" Value="two" Text="@SecondText" />
+        <MudSelectItemExtended T="string" Value="@SecondValue" Text="@SecondText" />
     }
 </MudSelectExtended>
 
 @code {
+    private const string FirstValue = "one";
+    private const string SecondValue = "two";
+
     public string Selected { get; private set; } = "one";
     public string FirstText { get; private set; } = "One";
     public string SecondText { get; private set; } = "Two";
