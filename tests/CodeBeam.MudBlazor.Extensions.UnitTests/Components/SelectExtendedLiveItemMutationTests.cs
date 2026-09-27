@@ -62,6 +62,57 @@ public class SelectExtendedLiveItemMutationTests : BunitTest
     }
 
     [Test]
+    public void ComparerMatchedSelection_UsesCurrentCollectionObjectForDisplay()
+    {
+        var collectionValue = new MutableSelectItem(2, "Two");
+        var externallySelectedValue = new MutableSelectItem(2, "Stale external text");
+        var items = new List<MutableSelectItem?> { collectionValue };
+
+        var cut = Context.Render<MudSelectExtended<MutableSelectItem>>(parameters => parameters
+            .Add(x => x.ItemCollection, items)
+            .Add(x => x.Value, externallySelectedValue)
+            .Add(x => x.Comparer, new MutableSelectItemIdComparer())
+            .Add(x => x.ToStringFunc, item => item?.Name));
+
+        cut.Find("input").GetAttribute("value").Should().Be("Two");
+
+        collectionValue.Name = "Two updated";
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(x => x.ItemCollection, items)
+            .Add(x => x.Value, externallySelectedValue)
+            .Add(x => x.Comparer, new MutableSelectItemIdComparer())
+            .Add(x => x.ToStringFunc, item => item?.Name));
+
+        cut.WaitForAssertion(() =>
+            cut.Find("input").GetAttribute("value").Should().Be("Two updated"));
+    }
+
+    [Test]
+    public void ItemCollectionReplacement_WhileOpen_UpdatesVisibleItems()
+    {
+        var initial = new List<string?> { "One", "Two" };
+
+        var cut = Context.Render<MudSelectExtended<string?>>(parameters => parameters
+            .Add(x => x.ItemCollection, initial));
+
+        cut.Find("div.mud-input-control").Click();
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.mud-list-item-extended").Should().HaveCount(2));
+
+        var replacement = new List<string?> { "Alpha", "Beta", "Gamma" };
+        cut.SetParametersAndRender(parameters => parameters
+            .Add(x => x.ItemCollection, replacement));
+
+        cut.WaitForAssertion(() =>
+        {
+            var visibleItems = cut.FindAll("div.mud-list-item-extended");
+            visibleItems.Should().HaveCount(3);
+            visibleItems[0].TextContent.Should().Contain("Alpha");
+            visibleItems[^1].TextContent.Should().Contain("Gamma");
+        });
+    }
+
+    [Test]
     public async Task MutableItemCollection_WhileOpen_ReflectsMutationRemovalAndAddition()
     {
         var cut = Context.Render<SelectMutableItemCollectionRefreshTest>();
@@ -92,5 +143,11 @@ public class SelectExtendedLiveItemMutationTests : BunitTest
             items.Should().HaveCount(3);
             items[^1].TextContent.Should().Contain("Four");
         });
+    }
+    private sealed class MutableSelectItemIdComparer : IEqualityComparer<MutableSelectItem?>
+    {
+        public bool Equals(MutableSelectItem? x, MutableSelectItem? y) => x?.Id == y?.Id;
+
+        public int GetHashCode(MutableSelectItem? obj) => obj?.Id.GetHashCode() ?? 0;
     }
 }
