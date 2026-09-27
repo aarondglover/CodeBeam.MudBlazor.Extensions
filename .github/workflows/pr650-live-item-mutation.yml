@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - validation/pr650-live-item-mutation
-    paths:
-      - .github/workflows/pr650-live-item-mutation.yml
 
 jobs:
   test:
