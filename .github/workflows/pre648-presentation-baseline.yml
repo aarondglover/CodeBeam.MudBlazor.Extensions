@@ -1,0 +1,25 @@
+name: Pre-648 presentation baseline
+
+on:
+  push:
+    branches:
+      - validation/pre648-presentation-baseline
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+      - run: dotnet restore
+      - name: Run pre-648 presentation probes
+        run: >
+          dotnet test tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj
+          --configuration Release
+          -f net10.0
+          --filter "Name=SelectedObjectMutation_ClosedSingleSelect_UpdatesDisplayedTextOnRerender|Name=DeclarativeSelectedItemTextMutation_UpdatesClosedPresentation"
