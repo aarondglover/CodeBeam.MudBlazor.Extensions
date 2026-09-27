@@ -35,11 +35,10 @@ namespace MudExtensions
                 ? SelectedValues?.Contains(value, _comparer) == true
                 : ValuesEqual(ReadValue, value);
 
-        internal async Task RefreshPresentationAsync()
-        {
-            await UpdateTextPropertyAsync(false);
-            StateHasChanged();
-        }
+        private bool _declarativePresentationDirty;
+
+        internal void MarkDeclarativePresentationDirty()
+            => _declarativePresentationDirty = true;
 
         /// <summary>
         /// Resolves the selected option for ItemContent presentation without requiring that
