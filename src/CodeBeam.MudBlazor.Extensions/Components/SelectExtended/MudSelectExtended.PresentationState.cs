@@ -30,6 +30,35 @@ namespace MudExtensions
         private MudSelectItemExtended<T?>? FindRegisteredItem(T? value)
             => Items?.FirstOrDefault(item => ValuesEqual(item.Value, value));
 
+        private bool _presentationRefreshPending;
+
+        /// <summary>
+        /// Coalesces presentation refreshes requested by declarative metadata items. Child item
+        /// parameters are applied after the select's own parameter lifecycle, so this refresh
+        /// runs after the current render batch and derives the closed presentation from the
+        /// updated registered metadata.
+        /// </summary>
+        internal void RequestDeclarativePresentationRefresh()
+        {
+            if (_presentationRefreshPending)
+                return;
+
+            _presentationRefreshPending = true;
+
+            InvokeAsync(async () =>
+            {
+                try
+                {
+                    await UpdateTextPropertyAsync(false);
+                    StateHasChanged();
+                }
+                finally
+                {
+                    _presentationRefreshPending = false;
+                }
+            }).CatchAndLog();
+        }
+
         /// <summary>
         /// Resolves the selected option for ItemContent presentation without requiring that
         /// option to have a currently rendered list-item component.
