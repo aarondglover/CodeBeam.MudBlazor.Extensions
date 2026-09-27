@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using MudExtensions.UnitTests.TestComponents;
 
 namespace MudExtensions.UnitTests.Components
 {
@@ -28,6 +29,33 @@ namespace MudExtensions.UnitTests.Components
             cut.Instance.Items.Should().ContainSingle();
             cut.FindComponents<MudListExtended<string>>().Should().BeEmpty();
             cut.FindComponents<MudSelectItemExtended<string>>().Should().ContainSingle();
+        }
+
+
+        [Test]
+        public async Task ItemCollection_SelectedObjectMutation_RefreshesClosedPresentation()
+        {
+            var cut = Context.Render<SelectSingleItemCollectionMutationTest>();
+
+            cut.Find("input").GetAttribute("value").Should().Be("Two");
+
+            await cut.InvokeAsync(() => cut.Instance.RenameSelected("Two updated"));
+
+            cut.WaitForAssertion(() =>
+                cut.Find("input").GetAttribute("value").Should().Be("Two updated"));
+        }
+
+        [Test]
+        public async Task DeclarativeSelectedItemTextMutation_RefreshesClosedPresentation()
+        {
+            var cut = Context.Render<SelectDeclarativeSelectedItemMutationTest>();
+
+            cut.Find("input").GetAttribute("value").Should().Be("One");
+
+            await cut.InvokeAsync(() => cut.Instance.RenameSelectedItem("One updated"));
+
+            cut.WaitForAssertion(() =>
+                cut.Find("input").GetAttribute("value").Should().Be("One updated"));
         }
 
         [Test]

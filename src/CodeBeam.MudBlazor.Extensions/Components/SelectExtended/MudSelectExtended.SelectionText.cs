@@ -7,11 +7,13 @@ namespace MudExtensions
         {
             await base.OnParametersSetAsync();
 
-            // SelectedValues is a synchronous parameter setter. Its existing async text update
-            // cannot be awaited there, so reconcile collection-backed presentation after the
-            // complete parameter set has been applied. This is value-driven and does not depend
-            // on any MudSelectItemExtended component being materialized.
-            if (MultiSelection && ItemCollection is not null)
+            // Reconcile collection-backed presentation after the complete parameter set has
+            // been applied. ItemCollection and the selected values are authoritative, so display
+            // text is derived from their current state rather than retained item components.
+            //
+            // This also covers mutable selected objects whose display representation changes
+            // without replacing the collection or selected-value reference.
+            if (ItemCollection is not null)
                 await UpdateTextPropertyAsync(false);
         }
     }

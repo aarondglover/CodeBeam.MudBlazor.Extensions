@@ -16,6 +16,14 @@ namespace MudExtensions
 
         private IMudSelectExtended? _parent;
         private MudSelectExtended<T?>? _registeredSelect;
+        private bool _hasRegisteredPresentationMetadata;
+        private T? _registeredValue;
+        private string? _registeredDisplayString;
+        private bool _registeredDisabled;
+        private bool _registeredIsFunctional;
+        private string? _registeredHref;
+        private string? _registeredClass;
+        private string? _registeredStyle;
 
         internal MudSelectExtended<T?>? MudSelectExtended => (MudSelectExtended<T?>?)_parent;
 
@@ -166,18 +174,62 @@ namespace MudExtensions
             // backed items are always transient view components; ItemCollection and selected values
             // are authoritative regardless of whether the visible list itself is virtualized.
             var shouldRegister = select != null && select.ItemCollection == null && HideContent;
+            var previousValue = _registeredValue;
+            var presentationMetadataChanged = HasRegisteredPresentationMetadataChanged(select);
 
             if (!shouldRegister || !ReferenceEquals(_registeredSelect, select))
             {
                 _registeredSelect?.Remove(this);
                 _registeredSelect = null;
+                _hasRegisteredPresentationMetadata = false;
             }
 
             if (shouldRegister && _registeredSelect == null)
             {
                 select!.Add(this);
                 _registeredSelect = select;
+                CaptureRegisteredPresentationMetadata();
             }
+            else if (shouldRegister && presentationMetadataChanged)
+            {
+                CaptureRegisteredPresentationMetadata();
+
+                if (select!.IsSelectedPresentationValue(previousValue) ||
+                    select.IsSelectedPresentationValue(Value))
+                {
+                    select.MarkDeclarativePresentationDirty();
+                }
+            }
+        }
+
+        private bool HasRegisteredPresentationMetadataChanged(MudSelectExtended<T?>? select)
+        {
+            if (!_hasRegisteredPresentationMetadata)
+                return false;
+
+            var valueChanged = select == null
+                ? !EqualityComparer<T?>.Default.Equals(_registeredValue, Value)
+                : !select.PresentationValuesEqual(_registeredValue, Value);
+
+            return valueChanged
+                || _registeredDisplayString != DisplayString
+                || _registeredDisabled != Disabled
+                || _registeredIsFunctional != IsFunctional
+                || _registeredHref != Href
+                || _registeredClass != Class
+                || _registeredStyle != Style;
+        }
+
+        private void CaptureRegisteredPresentationMetadata()
+        {
+            _registeredValue = Value;
+            _registeredDisplayString = DisplayString;
+            _registeredDisabled = Disabled;
+            _registeredIsFunctional = IsFunctional;
+            _registeredHref = Href;
+            _registeredClass = Class;
+            _registeredStyle = Style;
+            _hasRegisteredPresentationMetadata = true;
         }
 
         /// <summary>

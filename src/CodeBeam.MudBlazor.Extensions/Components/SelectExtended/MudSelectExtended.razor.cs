@@ -829,9 +829,17 @@ namespace MudExtensions
                 await KeyInterceptorService.SubscribeAsync(_elementId, options, keyDown: HandleKeyDownAsync, keyUp: HandleKeyUpAsync);
 
                 await UpdateTextPropertyAsync(false);
+                _declarativePresentationDirty = false;
                 _list?.ForceUpdateItems();
                 StateHasChanged();
             }
+            else if (_declarativePresentationDirty)
+            {
+                _declarativePresentationDirty = false;
+                await UpdateTextPropertyAsync(false);
+                StateHasChanged();
+            }
+
             //Console.WriteLine("Select rendered");
             await base.OnAfterRenderAsync(firstRender);
         }
@@ -1166,8 +1174,15 @@ namespace MudExtensions
             if (item == null)
                 return false;
 
+            var isSelected = IsSelectedPresentationValue(item.Value);
+
             if (!_items.Contains(item) && FindRegisteredItem(item.Value) == null)
+            {
                 _items.Add(item);
+
+                if (isSelected)
+                    MarkDeclarativePresentationDirty();
+            }
 
             return ValuesEqual(item.Value, ReadValue);
         }
@@ -1181,7 +1196,10 @@ namespace MudExtensions
             if (item == null)
                 return;
 
-            _items.Remove(item);
+            var wasSelected = IsSelectedPresentationValue(item.Value);
+
+            if (_items.Remove(item) && wasSelected)
+                MarkDeclarativePresentationDirty();
         }
 
         #endregion

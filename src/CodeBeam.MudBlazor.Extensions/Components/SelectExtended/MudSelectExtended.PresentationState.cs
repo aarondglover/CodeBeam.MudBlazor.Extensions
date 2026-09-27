@@ -9,6 +9,9 @@ namespace MudExtensions
         private bool ValuesEqual(T? left, T? right)
             => (_comparer ?? EqualityComparer<T?>.Default).Equals(left, right);
 
+        internal bool PresentationValuesEqual(T? left, T? right)
+            => ValuesEqual(left, right);
+
         private bool TryGetCollectionValue(T? value, out T? collectionValue)
         {
             if (ItemCollection != null)
@@ -29,6 +32,16 @@ namespace MudExtensions
 
         private MudSelectItemExtended<T?>? FindRegisteredItem(T? value)
             => Items?.FirstOrDefault(item => ValuesEqual(item.Value, value));
+
+        internal bool IsSelectedPresentationValue(T? value)
+            => MultiSelection
+                ? SelectedValues?.Contains(value, _comparer) == true
+                : ValuesEqual(ReadValue, value);
+
+        private bool _declarativePresentationDirty;
+
+        internal void MarkDeclarativePresentationDirty()
+            => _declarativePresentationDirty = true;
 
         /// <summary>
         /// Resolves the selected option for ItemContent presentation without requiring that
