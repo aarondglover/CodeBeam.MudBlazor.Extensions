@@ -31,4 +31,5 @@ jobs:
           -m:1
           -v:q
           -clp:ErrorsOnly
+          --logger "console;verbosity=minimal"
           --blame-hang-timeout 60s
