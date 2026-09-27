@@ -1,0 +1,39 @@
+@namespace MudExtensions.UnitTests.TestComponents
+
+<MudPopoverProvider />
+
+<MudSelectExtended T="MutableSelectItem"
+                   ItemCollection="@Items"
+                   Value="@Selected"
+                   ToStringFunc="@Format" />
+
+@code {
+    public List<MutableSelectItem?> Items { get; } =
+    [
+        new(1, "One"),
+        new(2, "Two"),
+        new(3, "Three")
+    ];
+
+    public MutableSelectItem Selected => Items[1]!;
+
+    private static string? Format(MutableSelectItem? item) => item?.Name;
+
+    public void RenameFirst(string name)
+    {
+        Items[0]!.Name = name;
+        StateHasChanged();
+    }
+
+    public void RemoveLast()
+    {
+        Items.RemoveAt(Items.Count - 1);
+        StateHasChanged();
+    }
+
+    public void Add(string name)
+    {
+        Items.Add(new MutableSelectItem(Items.Count + 1, name));
+        StateHasChanged();
+    }
+}
