@@ -1,0 +1,94 @@
+@namespace MudExtensions.UnitTests.TestComponents
+
+<MudPopoverProvider />
+
+<MudSelectExtended T="MutableSelectItem"
+                   ItemCollection="@Items"
+                   Value="@Selected"
+                   MultiSelection="@MultiSelection"
+                   SelectedValues="@SelectedValues"
+                   Comparer="@Comparer"
+                   ToStringFunc="@Format" />
+
+@code {
+    public List<MutableSelectItem?> Items { get; private set; } =
+    [
+        new(1, "One"),
+        new(2, "Two"),
+        new(3, "Three")
+    ];
+
+    public MutableSelectItem Selected { get; private set; } = null!;
+
+    public IEnumerable<MutableSelectItem?>? SelectedValues { get; private set; }
+
+    public bool MultiSelection { get; set; }
+
+    public IEqualityComparer<MutableSelectItem?>? Comparer { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Selected = Items[1]!;
+        base.OnInitialized();
+    }
+
+    private static string? Format(MutableSelectItem? item) => item?.Name;
+
+    public void RenameSelected(string name)
+    {
+        Selected.Name = name;
+        StateHasChanged();
+    }
+
+    public void SelectFirstTwo()
+    {
+        MultiSelection = true;
+        SelectedValues = [Items[0], Items[1]];
+        StateHasChanged();
+    }
+
+    public void RenameSecond(string name)
+    {
+        Items[1]!.Name = name;
+        StateHasChanged();
+    }
+
+    public void UseComparerMatchedExternalSelection()
+    {
+        var collectionValue = new MutableSelectItem(2, "Two");
+        Items = [collectionValue];
+        Selected = new MutableSelectItem(2, "Stale external text");
+        Comparer = new MutableSelectItemIdComparer();
+        StateHasChanged();
+    }
+
+    public void RenameFirst(string name)
+    {
+        Items[0]!.Name = name;
+        StateHasChanged();
+    }
+
+    public void RemoveLast()
+    {
+        Items.RemoveAt(Items.Count - 1);
+        StateHasChanged();
+    }
+
+    public void Add(string name)
+    {
+        Items.Add(new MutableSelectItem(Items.Count + 1, name));
+        StateHasChanged();
+    }
+
+    public void ReplaceCollection()
+    {
+        Items =
+        [
+            new(10, "Alpha"),
+            new(11, "Beta"),
+            new(12, "Gamma")
+        ];
+        Selected = Items[0]!;
+        StateHasChanged();
+    }
+}
