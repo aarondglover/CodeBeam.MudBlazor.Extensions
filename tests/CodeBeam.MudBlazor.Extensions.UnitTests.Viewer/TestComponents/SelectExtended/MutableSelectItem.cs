@@ -12,3 +12,10 @@ public sealed class MutableSelectItem
 
     public string Name { get; set; }
 }
+
+public sealed class MutableSelectItemIdComparer : IEqualityComparer<MutableSelectItem?>
+{
+    public bool Equals(MutableSelectItem? x, MutableSelectItem? y) => x?.Id == y?.Id;
+
+    public int GetHashCode(MutableSelectItem? obj) => obj?.Id.GetHashCode() ?? 0;
+}
