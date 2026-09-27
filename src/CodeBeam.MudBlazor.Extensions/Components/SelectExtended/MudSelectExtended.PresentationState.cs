@@ -9,6 +9,9 @@ namespace MudExtensions
         private bool ValuesEqual(T? left, T? right)
             => (_comparer ?? EqualityComparer<T?>.Default).Equals(left, right);
 
+        internal bool PresentationValuesEqual(T? left, T? right)
+            => ValuesEqual(left, right);
+
         private bool TryGetCollectionValue(T? value, out T? collectionValue)
         {
             if (ItemCollection != null)
