@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Components;
-using MudBlazor.Extensions;
+using MudBlazor.Utilities.Exceptions;
 
 namespace MudExtensions
 {
