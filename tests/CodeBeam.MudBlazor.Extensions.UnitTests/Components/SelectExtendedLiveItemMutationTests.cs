@@ -103,4 +103,61 @@ public class SelectExtendedLiveItemMutationTests : BunitTest
             items[^1].TextContent.Should().Contain("Four");
         });
     }
+    [Test]
+    public async Task DeclarativeSelectedItemTextMutation_UpdatesClosedPresentation()
+    {
+        var cut = Context.Render<SelectDeclarativeItemMutationTest>();
+
+        cut.Find("input").GetAttribute("value").Should().Be("One");
+
+        await cut.InvokeAsync(() => cut.Instance.RenameFirst("One updated"));
+
+        cut.WaitForAssertion(() =>
+            cut.Find("input").GetAttribute("value").Should().Be("One updated"));
+    }
+
+    [Test]
+    public async Task DeclarativeItems_ConditionalAddRemove_UpdatesOpenList()
+    {
+        var cut = Context.Render<SelectDeclarativeItemMutationTest>();
+
+        cut.Find("div.mud-input-control").Click();
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.mud-list-item-extended").Should().HaveCount(2));
+
+        await cut.InvokeAsync(cut.Instance.RemoveSecond);
+
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.mud-list-item-extended").Should().ContainSingle());
+
+        await cut.InvokeAsync(cut.Instance.AddSecond);
+
+        cut.WaitForAssertion(() =>
+        {
+            var items = cut.FindAll("div.mud-list-item-extended");
+            items.Should().HaveCount(2);
+            items[^1].TextContent.Should().Contain("Two");
+        });
+    }
+
+    [Test]
+    public async Task DeclarativeItemParameterMutation_UpdatesVisibleItem()
+    {
+        var cut = Context.Render<SelectDeclarativeItemMutationTest>();
+
+        cut.Find("div.mud-input-control").Click();
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.mud-list-item-extended").Should().HaveCount(2));
+
+        await cut.InvokeAsync(() => cut.Instance.RenameSecond("Two updated"));
+
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.mud-list-item-extended")[1].TextContent.Should().Contain("Two updated"));
+
+        await cut.InvokeAsync(cut.Instance.DisableFirst);
+
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.mud-list-item-extended")[0].ClassList.Should().Contain("mud-list-item-disabled-extended"));
+    }
+
 }
