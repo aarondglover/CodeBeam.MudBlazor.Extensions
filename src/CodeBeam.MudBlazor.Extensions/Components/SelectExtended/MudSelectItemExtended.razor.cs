@@ -163,9 +163,9 @@ namespace MudExtensions
         }
 
         /// <inheritdoc />
-        protected override void OnParametersSet()
+        protected override async Task OnParametersSetAsync()
         {
-            base.OnParametersSet();
+            await base.OnParametersSetAsync();
 
             _parent?.CheckGenericTypeMatch(this);
             var select = MudSelectExtended;
@@ -174,6 +174,7 @@ namespace MudExtensions
             // backed items are always transient view components; ItemCollection and selected values
             // are authoritative regardless of whether the visible list itself is virtualized.
             var shouldRegister = select != null && select.ItemCollection == null && HideContent;
+            var previousSelect = _registeredSelect;
             var previousValue = _registeredValue;
             var presentationMetadataChanged = HasRegisteredPresentationMetadataChanged();
 
@@ -189,6 +190,9 @@ namespace MudExtensions
                 select!.Add(this);
                 _registeredSelect = select;
                 CaptureRegisteredPresentationMetadata();
+
+                if (select.IsSelectedPresentationValue(Value))
+                    await select.RefreshPresentationAsync();
             }
             else if (shouldRegister && presentationMetadataChanged)
             {
@@ -197,8 +201,13 @@ namespace MudExtensions
                 if (select!.IsSelectedPresentationValue(previousValue) ||
                     select.IsSelectedPresentationValue(Value))
                 {
-                    select.RequestDeclarativePresentationRefresh();
+                    await select.RefreshPresentationAsync();
                 }
+            }
+            else if (previousSelect != null && !shouldRegister &&
+                     previousSelect.IsSelectedPresentationValue(previousValue))
+            {
+                await previousSelect.RefreshPresentationAsync();
             }
         }
 
