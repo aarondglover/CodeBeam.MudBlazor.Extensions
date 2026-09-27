@@ -5,9 +5,14 @@ on:
     branches:
       - validation/pr650-live-item-mutation
 
+concurrency:
+  group: pr650-live-item-mutation
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -21,10 +26,20 @@ jobs:
             10.0.x
 
       - name: Restore
-        run: dotnet restore
+        timeout-minutes: 5
+        run: dotnet restore -m:1
 
       - name: Build
-        run: dotnet build --no-restore
+        timeout-minutes: 7
+        run: dotnet build --no-restore -m:1
 
-      - name: Run full net10 test suite
-        run: dotnet test --configuration Release -f net10.0 --collect:"XPlat Code Coverage"
+      - name: Run focused live-mutation bUnit probes
+        timeout-minutes: 5
+        run: >
+          dotnet test
+          tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj
+          --configuration Release
+          -f net10.0
+          --no-restore
+          --filter FullyQualifiedName~SelectExtendedLiveItemMutationTests
+          -m:1
