@@ -1,0 +1,32 @@
+name: PR650 live item mutation probe
+
+on:
+  push:
+    branches:
+      - validation/pr650-live-item-mutation
+    paths:
+      - .github/workflows/pr650-live-item-mutation.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Run live-mutation bUnit probes
+        run: dotnet test tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj --configuration Release -f net10.0 --no-build --filter FullyQualifiedName~SelectExtendedLiveItemMutationTests
