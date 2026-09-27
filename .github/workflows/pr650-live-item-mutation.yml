@@ -26,5 +26,5 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
-      - name: Diagnose SelectExtended regression surface
-        run: dotnet test tests/CodeBeam.MudBlazor.Extensions.UnitTests/CodeBeam.MudBlazor.Extensions.UnitTests.csproj --configuration Release -f net10.0 --filter FullyQualifiedName~SelectExtended --blame-hang --blame-hang-timeout 20s --logger "console;verbosity=normal"
+      - name: Run full net10 test suite
+        run: dotnet test --configuration Release -f net10.0 --collect:"XPlat Code Coverage"
