@@ -1,15 +1,24 @@
-﻿@namespace MudExtensions.Docs.Examples
+@namespace MudExtensions.Docs.Examples
 
 <MudGrid>
     <MudItem xs="12" sm="8">
-        <MudStack>
-            <MudSelectExtended @bind-SelectedValues="@_values" Label="Select Overview" Virtualize="true" MultiSelection="_multiselection" Clearable="_clearable">
-                <MudSelectItemExtended Value="@("Foo")" Text="Foo" />
-                <MudSelectItemExtended Value="@("Bar")" Text="Bar" />
-                <MudSelectItemExtended Value="@("Fizz")" Text="Fizz" />
-                <MudSelectItemExtended Value="@("Buzz")" Text="Buzz" />
-            </MudSelectExtended>
-            <MudSelectExtended @bind-SelectedValues="@_values" Label="Data Based" ItemCollection="_collection" Virtualize="true" MultiSelection="_multiselection" Clearable="_clearable" />
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.body2">
+                Browse 1,000 options without rendering the entire list at once.
+                The preselected items are near the start and end of the list.
+            </MudText>
+
+            <MudSelectExtended T="string"
+                               Label="Virtualized select (1,000 items)"
+                               ItemCollection="_items"
+                               @bind-SelectedValues="_selectedValues"
+                               Virtualize="true"
+                               MultiSelection="_multiselection"
+                               Clearable="_clearable" />
+
+            <MudText Typo="Typo.caption">
+                Selected: @(string.Join(", ", _selectedValues ?? []))
+            </MudText>
         </MudStack>
     </MudItem>
 
@@ -22,8 +31,11 @@
 </MudGrid>
 
 @code {
+    private readonly string[] _items = Enumerable.Range(1, 1_000)
+        .Select(index => $"Item {index:0000}")
+        .ToArray();
+
+    private IEnumerable<string?> _selectedValues = ["Item 0005", "Item 0950"];
     private bool _multiselection = true;
     private bool _clearable = false;
-    private string[] _collection = new string[] { "Foo", "Bar", "Fizz", "Buzz" };
-    private IEnumerable<string?> _values = new List<string?>() { "Foo" };
 }
