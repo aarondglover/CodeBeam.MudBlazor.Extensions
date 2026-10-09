@@ -4,29 +4,33 @@
     <MudItem xs="12" sm="8">
         <MudStack Spacing="3">
             <MudText Typo="Typo.body2">
-                Browse 1,000 options without rendering the entire list at once.
-                The preselected items are near the start and end of the list.
+                Both selects offer 1,000 options, but virtualization renders only the visible options.
+                Values near the end of the collection are already selected.
             </MudText>
 
             <MudSelectExtended T="string"
-                               Label="Virtualized select (1,000 items)"
+                               Label="Single selection (1,000 items)"
+                               ItemCollection="_items"
+                               @bind-Value="_selectedValue"
+                               Virtualize="true"
+                               Clearable="_clearable" />
+
+            <MudSelectExtended T="string"
+                               Label="Multiple selection (1,000 items)"
                                ItemCollection="_items"
                                @bind-SelectedValues="_selectedValues"
                                Virtualize="true"
-                               MultiSelection="_multiselection"
+                               MultiSelection="true"
                                Clearable="_clearable" />
 
             <MudText Typo="Typo.caption">
-                Selected: @(string.Join(", ", _selectedValues ?? []))
+                Selected items: @(string.Join(", ", _selectedValues ?? []))
             </MudText>
         </MudStack>
     </MudItem>
 
     <MudItem xs="12" sm="4">
-        <MudStack Spacing="2">
-            <MudSwitchM3 @bind-Value="_multiselection" Color="Color.Secondary" Label="Multiselection" />
-            <MudSwitchM3 @bind-Value="_clearable" Color="Color.Secondary" Label="Clearable" />
-        </MudStack>
+        <MudSwitchM3 @bind-Value="_clearable" Color="Color.Secondary" Label="Clearable" />
     </MudItem>
 </MudGrid>
 
@@ -35,7 +39,7 @@
         .Select(index => $"Item {index:0000}")
         .ToArray();
 
+    private string? _selectedValue = "Item 0950";
     private IEnumerable<string?> _selectedValues = ["Item 0005", "Item 0950"];
-    private bool _multiselection = true;
-    private bool _clearable = false;
+    private bool _clearable;
 }
