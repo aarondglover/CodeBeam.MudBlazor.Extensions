@@ -248,7 +248,7 @@ namespace MudExtensions
                 return;
             }
             string str = ConvertSet(_theValue.Value) ?? string.Empty;
-            await _elementReferences[str.Length].FocusAsync();
+            await _elementReferences[Math.Min(str.Length, _count.Value - 1)].FocusAsync();
         }
 
         /// <summary>
